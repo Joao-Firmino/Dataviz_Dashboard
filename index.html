@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dataviz Dashboard - Jornada do Estudante</title>
+    <link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="app-header__brand">
+            <span class="app-header__eyebrow">Dashboard independente</span>
+            <h1 class="app-header__title">Dataviz Dashboard - Jornada do Estudante</h1>
+            <p class="app-header__subtitle">Versão isolada da trajetória, com os mesmos dados locais e sem dependências do projeto original.</p>
+        </div>
+    </header>
+
+    <main class="app-main">
+        <section class="poc-shell" aria-label="Painel principal do dashboard independente">
+            <div class="poc-header">
+                <div class="poc-header__copy">
+                    <p class="poc-kicker">Análise interativa</p>
+                    <h2 id="poc-title">Como os estudantes percorrem a atividade?</h2>
+                </div>
+
+                <div class="poc-actions">
+                    <label class="poc-control">
+                        <span>Atividade</span>
+                        <select id="poc-activity-select" aria-label="Selecionar atividade"></select>
+                    </label>
+
+                    <label class="poc-volume-filter" for="poc-min-volume">
+                        <span>Rotas com mín. <strong id="poc-min-volume-value">10</strong> aluno(s)</span>
+                        <input type="range" id="poc-min-volume" min="1" max="50" value="10" aria-label="Volume mínimo de alunos">
+                    </label>
+
+                    <div class="poc-filter-group" role="group" aria-label="Modo da visualização">
+                        <button id="btn-all" class="poc-filter-btn is-active" type="button">Todas as rotas</button>
+                        <button id="btn-drop" class="poc-filter-btn" type="button">Ver evasões</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="poc-main-content">
+                <div class="poc-chart-area">
+                    <div id="poc-dashboard-container" class="poc-dashboard-container"></div>
+                </div>
+
+                <aside id="poc-detail-panel" class="poc-detail-panel" aria-label="Detalhes da trajetória">
+                    <div class="poc-panel-header">
+                        <h3>Detalhes da Trajetória</h3>
+                        <button id="poc-panel-close" type="button" aria-label="Fechar painel">×</button>
+                    </div>
+                    <div id="poc-panel-content" class="poc-panel-content">
+                        <p style="color: #999;">Clique em uma rota para ver detalhes</p>
+                    </div>
+                </aside>
+            </div>
+        </section>
+    </main>
+
+    <script src="./js/vendor/d3.v6.min.js"></script>
+    <script src="./js/vendor/lodash.js"></script>
+    <script src="./js/main.js" type="module"></script>
+</body>
+</html>
