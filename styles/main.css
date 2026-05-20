@@ -51,7 +51,7 @@ input {
 }
 
 .app-header__brand {
-    width: min(1120px, 100%);
+    width: min(1480px, calc(100% - 16px));
 }
 
 .app-header__eyebrow {
@@ -79,13 +79,13 @@ input {
 }
 
 .app-main {
-    width: min(1160px, calc(100% - 24px));
+    width: min(1480px, calc(100% - 16px));
     margin: 0 auto;
     padding: 18px 0 28px;
 }
 
 .poc-shell {
-    padding: 18px;
+    padding: 14px;
     border-radius: 18px;
     background: radial-gradient(circle at 10% 10%, #fffaf1 0%, #f3ece2 45%, #ebe2d6 100%);
     border: 1px solid rgba(223, 210, 194, 0.9);
