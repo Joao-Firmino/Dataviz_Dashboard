@@ -30,6 +30,31 @@ const EVENT_COLOR = {
     assignment_sub: "#c0ca33"
 };
 
+const EVENT_ICON = {
+    course_vis: '<path d="M5 5h7v14H5z"></path><path d="M12 5h7v14h-7z"></path>',
+    resource_vis: '<path d="M7 4h8l4 4v12H7z"></path><path d="M15 4v4h4"></path>',
+    forum_vis: '<path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v5A2.5 2.5 0 0 1 16.5 14H11l-4 3v-3H7.5A2.5 2.5 0 0 1 5 11.5z"></path>',
+    forum_participation: '<path d="M7 16c0-2 1.7-3.5 4-3.5s4 1.5 4 3.5"></path><circle cx="11" cy="8" r="2.3"></circle><path d="M15.5 8.5h3"></path><path d="M17 7v3"></path>',
+    assignment_vis: '<path d="M7 4h10v16H7z"></path><path d="M9 8h6"></path><path d="M9 11h6"></path>',
+    assignment_try: '<path d="M5.5 15.5l7.8-7.8 2.9 2.9-7.8 7.8H5.5z"></path><path d="M14.2 7.8l1.9-1.9 2.9 2.9-1.9 1.9"></path>',
+    assignment_sub: '<path d="M5 12.5 9 16l10-11"></path><circle cx="12" cy="12" r="8"></circle>'
+};
+
+function svgIconMarkup(iconName, className = "") {
+    return `<svg class="${className}" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${EVENT_ICON[iconName] || ""}</svg>`;
+}
+
+function getStatusMarkup(hasSubmission) {
+    return hasSubmission
+        ? `<span class="poc-route-status is-finished">${svgIconMarkup("assignment_sub", "")}Trajetória finalizada</span>`
+        : `<span class="poc-route-status is-unfinished">${svgIconMarkup("assignment_try", "")}Trajetória não finalizada</span>`;
+}
+
+function getEventChipMarkup(eventName) {
+    const label = EVENT_LABEL[eventName] || eventName;
+    return `<span class="poc-step-chip">${svgIconMarkup(eventName, "")}${label}</span>`;
+}
+
 function normalizeGrade(rawValue) {
     const grade = Number(rawValue);
     if (Number.isNaN(grade)) {
@@ -58,13 +83,39 @@ function simplifyAssignmentSequence(route) {
     if (route.length === 0) return route.slice();
 
     const normalizedRoute = route.filter((value, index) => index === 0 || value !== route[index - 1]);
-    const firstSubIdx = normalizedRoute.indexOf("assignment_sub");
+    const simplifiedRoute = [];
 
-    if (firstSubIdx >= 0) {
-        return normalizedRoute.slice(0, firstSubIdx + 1);
+    for (let index = 0; index < normalizedRoute.length; index += 1) {
+        const currentEvent = normalizedRoute[index];
+
+        if (currentEvent !== "assignment_vis" && currentEvent !== "assignment_try" && currentEvent !== "assignment_sub") {
+            simplifiedRoute.push(currentEvent);
+            continue;
+        }
+
+        let clusterEnd = index;
+
+        while (
+            clusterEnd + 1 < normalizedRoute.length &&
+            ["assignment_vis", "assignment_try", "assignment_sub"].includes(normalizedRoute[clusterEnd + 1])
+        ) {
+            clusterEnd += 1;
+        }
+
+        const cluster = normalizedRoute.slice(index, clusterEnd + 1);
+
+        if (cluster.includes("assignment_sub")) {
+            simplifiedRoute.push("assignment_sub");
+        } else if (cluster.includes("assignment_try")) {
+            simplifiedRoute.push("assignment_try");
+        } else {
+            simplifiedRoute.push("assignment_vis");
+        }
+
+        index = clusterEnd;
     }
 
-    return normalizedRoute;
+    return simplifiedRoute;
 }
 
 function routeHasSubmission(route) {
@@ -158,92 +209,84 @@ function getRouteLabel(route) {
     return route.map((step) => EVENT_LABEL[step] || step).join(" → ");
 }
 
-function createTooltip(container) {
-    container.selectAll(".poc-tooltip").remove();
-
-    return container
-        .append("div")
-        .attr("class", "poc-tooltip")
-        .style("opacity", 0);
-}
-
 function buildInsights(routeData, allRoutes) {
     const insights = [];
     const totalStudentsInScope = d3.sum(allRoutes, (d) => d.totalStudents) || 1;
     const participation = ((routeData.totalStudents / totalStudentsInScope) * 100).toFixed(1);
 
-    insights.push(`<strong>${participation}%</strong> dos estudantes seguem esta rota`);
+    insights.push(`<strong>${participation}%</strong> dos estudantes seguem esta rota.`);
 
     if (routeData.totalStudents === 1) {
-        insights.push("Esta é uma rota <strong>única</strong>.");
+        insights.push("Rota <strong>única</strong>.");
     } else if (routeData.totalStudents > 10) {
-        insights.push(`Esta é uma rota <strong>frequente</strong> com ${routeData.totalStudents} estudantes.`);
+        insights.push(`Rota <strong>frequente</strong> com ${routeData.totalStudents} estudantes.`);
     }
 
     if (!routeHasSubmission(routeData.route)) {
-        insights.push("Os alunos desta rota <strong>não entregaram</strong> a atividade, então isso é <strong>evasão</strong>.");
+        insights.push("Sem entrega: trajetória <strong>não finalizada</strong>.");
     } else if (routeData.avgGrade >= 7) {
-        insights.push(`Alunos desta rota tiveram <strong>bom desempenho</strong> (média ${routeData.avgGrade.toFixed(1)}).`);
+        insights.push(`Bom desempenho: média <strong>${routeData.avgGrade.toFixed(1)}</strong>.`);
     } else if (routeData.avgGrade < 5) {
-        insights.push(`Alunos desta rota tiveram <strong>dificuldade</strong> (média ${routeData.avgGrade.toFixed(1)}).`);
+        insights.push(`Dificuldade: média <strong>${routeData.avgGrade.toFixed(1)}</strong>.`);
     }
 
     if (routeData.route.length >= 6) {
         insights.push("A trajetória tem <strong>mais passos</strong> e tende a ser mais longa.");
     }
 
-    return insights;
+    return insights.slice(0, 3);
 }
 
-function renderDetailPanel(detailPanelSelection, routeData, allRoutes) {
+function renderDetailPanel(detailPanelSelection, routeData, allRoutes, options = {}) {
+    const previewLabel = options.preview ? "Prévia da rota" : "Detalhes da trajetória";
+
     if (!routeData) {
-        detailPanelSelection.html('<p style="color: #999;">Clique em uma rota para ver detalhes</p>');
+        detailPanelSelection.html(`
+            <div class="poc-detail-empty">
+                <div class="poc-detail-empty__lead">${svgIconMarkup("forum_vis", "")}Passe o mouse ou clique em uma rota</div>
+                <div class="poc-detail-empty__hint">Os ícones, a leitura da trajetória e os destaques ficam aqui. Use as duas visões para alternar entre trajetórias finalizadas e não finalizadas.</div>
+            </div>
+        `);
         return;
     }
 
     const routeLabel = getRouteLabel(routeData.route);
     const insights = buildInsights(routeData, allRoutes);
-    const studentsPreview = routeData.students.slice(0, 8).join(", ");
-    const moreStudents = routeData.students.length > 8 ? ` +${routeData.students.length - 8}` : "";
+    const stepsMarkup = routeData.route.map((step) => getEventChipMarkup(step)).join("");
+    const studentsPreview = routeData.students.slice(0, 6).join(", ");
+    const moreStudents = routeData.students.length > 6 ? ` +${routeData.students.length - 6}` : "";
 
-    let html = `<div class="poc-route-detail">`;
-    html += `<div class="poc-route-detail-item">`;
-    html += `<div class="poc-detail-label">Trajetória</div>`;
-    html += `<div class="poc-detail-value">${routeLabel}</div>`;
-    html += `</div>`;
+    const html = `
+        <div class="poc-route-detail">
+            <div class="poc-route-header">
+                ${getStatusMarkup(routeHasSubmission(routeData.route))}
+                <div class="poc-route-title">${previewLabel}: ${routeLabel}</div>
+            </div>
 
-    html += `<div class="poc-route-detail-item">`;
-    html += `<div class="poc-detail-label">Estudantes</div>`;
-    html += `<div class="poc-detail-value">${routeData.totalStudents}</div>`;
-    html += `</div>`;
+            <div class="poc-stat-grid">
+                <div class="poc-stat">
+                    <div class="poc-stat__label">Estudantes</div>
+                    <div class="poc-stat__value">${routeData.totalStudents}</div>
+                </div>
+                <div class="poc-stat">
+                    <div class="poc-stat__label">Média</div>
+                    <div class="poc-stat__value">${routeData.avgGrade.toFixed(2)}</div>
+                </div>
+                <div class="poc-stat">
+                    <div class="poc-stat__label">Passos</div>
+                    <div class="poc-stat__value">${routeData.route.length}</div>
+                </div>
+            </div>
 
-    html += `<div class="poc-route-detail-item">`;
-    html += `<div class="poc-detail-label">Resultado</div>`;
-    html += `<div class="poc-detail-value">${routeHasSubmission(routeData.route) ? "✓ Com entrega" : "✗ Evasão"}</div>`;
-    html += `</div>`;
+            <div class="poc-step-list">${stepsMarkup}</div>
 
-    html += `<div class="poc-route-detail-item">`;
-    html += `<div class="poc-detail-label">Leitura da rota</div>`;
-    html += `<div class="poc-detail-value">${routeHasSubmission(routeData.route) ? "A trajetória chega até a entrega." : "A trajetória não chega à entrega, então é evasão."}</div>`;
-    html += `</div>`;
+            <div class="poc-insight-list">
+                ${insights.map((insight) => `<div class="poc-insight">${insight}</div>`).join("")}
+            </div>
 
-    html += `<div class="poc-route-detail-item">`;
-    html += `<div class="poc-detail-label">Média da nota</div>`;
-    html += `<div class="poc-detail-value">${routeData.avgGrade.toFixed(2)}</div>`;
-    html += `</div>`;
-
-    html += `<div class="poc-route-detail-item">`;
-    html += `<div class="poc-detail-label">Amostra de estudantes</div>`;
-    html += `<div class="poc-detail-value">${studentsPreview}${moreStudents}</div>`;
-    html += `</div>`;
-
-    html += `<div class="poc-route-detail-item">`;
-    html += `<div class="poc-detail-label">Insights</div>`;
-    insights.forEach((insight) => {
-        html += `<div class="poc-insight">${insight}</div>`;
-    });
-    html += `</div>`;
-    html += `</div>`;
+            <div class="poc-insight">Amostra: ${studentsPreview}${moreStudents}</div>
+        </div>
+    `;
 
     detailPanelSelection.html(html);
 }
@@ -251,8 +294,12 @@ function renderDetailPanel(detailPanelSelection, routeData, allRoutes) {
 function buildNarrativeRoutes(groupedRoutes, narrativeMode, minVolume) {
     const volumeFiltered = groupedRoutes.filter((routeData) => routeData.totalStudents >= minVolume);
 
-    if (narrativeMode === "dropout") {
+    if (narrativeMode === "unfinished") {
         return volumeFiltered.filter((routeData) => !routeHasSubmission(routeData.route));
+    }
+
+    if (narrativeMode === "finished") {
+        return volumeFiltered.filter((routeData) => routeHasSubmission(routeData.route));
     }
 
     return volumeFiltered;
@@ -274,7 +321,7 @@ function renderTrajectoryChart({
     chartContainer.selectAll("svg, .poc-empty-state, .poc-render-note").remove();
 
     const routesToRender = buildNarrativeRoutes(groupedRoutes, state.narrativeMode, state.minVolume);
-    const MAX_RENDER_ROUTES = 240;
+    const MAX_RENDER_ROUTES = 180;
     const routesForChart = routesToRender.slice(0, MAX_RENDER_ROUTES);
     const hiddenRoutesCount = Math.max(0, routesToRender.length - routesForChart.length);
     const allVisibleKeys = new Set(routesForChart.map((d) => d.routeKey));
@@ -284,16 +331,17 @@ function renderTrajectoryChart({
     }
 
     const totalRoutes = routesToRender.length;
+    const modeLabel = state.narrativeMode === "unfinished"
+        ? "Trajetórias não finalizadas"
+        : "Trajetórias finalizadas";
 
     titleNode.text(
         totalRoutes > 0
-            ? (state.narrativeMode === "dropout"
-                ? `Onde os alunos abandonam ${activityName}? (${totalRoutes} rotas)`
-                : `Como os estudantes percorrem ${activityName}? (${totalRoutes} rotas)`)
+            ? `${modeLabel} em ${activityName} (${totalRoutes} rotas)`
             : `Sem rotas suficientes em ${activityName}.`
     );
-    btnAll.classed("is-active", state.narrativeMode === "all");
-    btnDrop.classed("is-active", state.narrativeMode === "dropout");
+    btnAll.classed("is-active", state.narrativeMode === "finished");
+    btnDrop.classed("is-active", state.narrativeMode === "unfinished");
 
     if (totalRoutes === 0) {
         renderDetailPanel(detailPanel, null, groupedRoutes);
@@ -305,14 +353,13 @@ function renderTrajectoryChart({
             .style("padding", "24px")
             .style("color", "#5f4a39")
             .text("Nenhuma rota corresponde aos filtros atuais.");
-
-        tooltip.style("opacity", 0);
         return;
     }
 
     const width = chartContainer.node().clientWidth || 1100;
-    const height = Math.max(520, Math.round(width * 0.46));
-    const margin = { top: 24, right: 28, bottom: 80, left: 170 };
+    const availableHeight = detailPanelContainer.node().clientHeight || chartContainer.node().clientHeight || 420;
+    const height = Math.max(240, availableHeight);
+    const margin = { top: 16, right: 20, bottom: 48, left: 164 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
     const maxSteps = d3.max(groupedRoutes, (d) => d.route.length) || 1;
@@ -346,7 +393,7 @@ function renderTrajectoryChart({
     const widthScale = d3
         .scaleLinear()
         .domain(d3.extent(routesForChart, (d) => d.totalStudents))
-        .range(denseMode ? [1.4, 5.2] : [4, 14])
+        .range(denseMode ? [1.2, 4.4] : [3.2, 11])
         .clamp(true);
 
     const svg = chartContainer
@@ -437,12 +484,12 @@ function renderTrajectoryChart({
 
     function getRouteOpacity(routeData) {
         if (state.selectedRouteKey && !isHighlighted(routeData)) {
-            return denseMode ? 0.08 : 0.14;
+            return denseMode ? 0.04 : 0.08;
         }
 
         return routeHasSubmission(routeData.route)
-            ? (denseMode ? 0.38 : 0.78)
-            : (denseMode ? 0.34 : 0.72);
+            ? (denseMode ? 0.18 : 0.34)
+            : (denseMode ? 0.16 : 0.3);
     }
 
     routeGroup.each(function (routeData) {
@@ -462,24 +509,18 @@ function renderTrajectoryChart({
             .attr("stroke", getRouteColor(routeData))
             .attr("opacity", getRouteOpacity(routeData))
             .attr("stroke-width", widthScale(routeData.totalStudents))
-            .on("mouseover", (event) => {
-                tooltip
-                    .style("opacity", 1)
-                    .html(`<strong>${getRouteLabel(routeData.route)}</strong><br><br>Estudantes: ${routeData.totalStudents}<br>Média: ${routeData.avgGrade.toFixed(2)}`);
-
-                const bounds = chartContainer.node().getBoundingClientRect();
-                tooltip
-                    .style("left", `${event.clientX - bounds.left + 14}px`)
-                    .style("top", `${event.clientY - bounds.top + 14}px`);
-            })
-            .on("mousemove", (event) => {
-                const bounds = chartContainer.node().getBoundingClientRect();
-                tooltip
-                    .style("left", `${event.clientX - bounds.left + 14}px`)
-                    .style("top", `${event.clientY - bounds.top + 14}px`);
+            .on("mouseover", () => {
+                if (!state.selectedRouteKey) {
+                    renderDetailPanel(detailPanel, routeData, groupedRoutes, { preview: true });
+                }
             })
             .on("mouseout", () => {
-                tooltip.style("opacity", 0);
+                if (state.selectedRouteKey) {
+                    const selected = routesForChart.find((d) => d.routeKey === state.selectedRouteKey) || null;
+                    renderDetailPanel(detailPanel, selected, groupedRoutes);
+                } else {
+                    renderDetailPanel(detailPanel, null, groupedRoutes);
+                }
             })
             .on("click", (event) => {
                 event.stopPropagation();
@@ -529,8 +570,8 @@ function renderTrajectoryChart({
         }
     });
 
-    const navigatorHeight = 32;
-    const navigatorY = innerHeight + 36;
+    const navigatorHeight = 20;
+    const navigatorY = innerHeight + 24;
     const stepLoad = Array.from({ length: maxSteps }, () => 0);
 
     routesForChart.forEach((routeData) => {
@@ -542,10 +583,12 @@ function renderTrajectoryChart({
     });
 
     if (hiddenRoutesCount > 0) {
-        chartContainer
-            .append("div")
-            .attr("class", "poc-render-note")
-            .text(`Exibindo as ${routesForChart.length} rotas mais frequentes de ${routesToRender.length}. Ajuste o filtro mínimo para reduzir o volume.`);
+        renderDetailPanel(
+            detailPanel,
+            selectedRoute,
+            groupedRoutes,
+            { preview: false }
+        );
     }
 
     let lastStepWithData = 0;
@@ -728,7 +771,6 @@ function renderTrajectoryChart({
 
     renderDetailPanel(detailPanel, selectedRoute, groupedRoutes);
     detailPanelContainer.style("display", "block");
-    tooltip.style("opacity", 0);
 }
 
 async function renderStudentJourneyPoC() {
@@ -784,13 +826,12 @@ async function renderStudentJourneyPoC() {
         const state = {
             activityIndex: 0,
             minVolume: 10,
-            narrativeMode: "all",
+            narrativeMode: "finished",
             selectedRouteKey: null,
             viewport: null
         };
 
         let currentGroupedRoutes = [];
-        const tooltip = createTooltip(chartContainer);
 
         function getGroupedRoutesForCurrentActivity() {
             const parsedIndex = Number(state.activityIndex);
@@ -819,7 +860,6 @@ async function renderStudentJourneyPoC() {
 
             renderTrajectoryChart({
                 chartContainer,
-                tooltip,
                 titleNode,
                 detailPanel,
                 detailPanelContainer,
@@ -842,7 +882,7 @@ async function renderStudentJourneyPoC() {
         activitySelect.on("change", function () {
             state.activityIndex = Number(this.value) || 0;
             state.minVolume = 10;
-            state.narrativeMode = "all";
+            state.narrativeMode = "finished";
             state.selectedRouteKey = null;
             state.viewport = null;
             refreshChart();
@@ -855,13 +895,13 @@ async function renderStudentJourneyPoC() {
         });
 
         btnAll.on("click", () => {
-            state.narrativeMode = "all";
+            state.narrativeMode = "finished";
             state.selectedRouteKey = null;
             refreshChart();
         });
 
         btnDrop.on("click", () => {
-            state.narrativeMode = "dropout";
+            state.narrativeMode = "unfinished";
             state.selectedRouteKey = null;
             refreshChart();
         });

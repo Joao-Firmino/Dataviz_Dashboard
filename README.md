@@ -20,5 +20,5 @@ Sirva a pasta com um servidor HTTP local e abra `index.html`.
 Exemplo:
 
 ```bash
-python -m http.server 8001
+python -m http.server 8000
 ```

@@ -28,6 +28,7 @@ body {
         radial-gradient(circle at top left, rgba(255, 255, 255, 0.65), transparent 35%),
         linear-gradient(180deg, #faf6ef 0%, var(--page-bg) 45%, var(--page-bg-2) 100%);
     min-height: 100vh;
+    overflow: hidden;
 }
 
 button,
@@ -43,7 +44,7 @@ input {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px 18px 16px;
+    padding: 14px 18px 12px;
     background: linear-gradient(180deg, rgba(31, 22, 15, 0.96), rgba(58, 42, 28, 0.92));
     color: #fff;
     box-shadow: 0 12px 30px rgba(19, 13, 9, 0.18);
@@ -81,11 +82,16 @@ input {
 .app-main {
     width: min(1480px, calc(100% - 16px));
     margin: 0 auto;
-    padding: 18px 0 28px;
+    padding: 10px 0 12px;
+    height: calc(100vh - 92px);
+    min-height: 0;
 }
 
 .poc-shell {
-    padding: 14px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
     border-radius: 18px;
     background: radial-gradient(circle at 10% 10%, #fffaf1 0%, #f3ece2 45%, #ebe2d6 100%);
     border: 1px solid rgba(223, 210, 194, 0.9);
@@ -95,21 +101,22 @@ input {
 .poc-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
-    gap: 20px;
+    align-items: flex-start;
+    gap: 12px;
     flex-wrap: wrap;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
+    flex: 0 0 auto;
 }
 
 .poc-header__copy {
     display: grid;
-    gap: 6px;
+    gap: 4px;
 }
 
 .poc-kicker {
     margin: 0;
     color: #8d6e63;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -118,25 +125,29 @@ input {
 #poc-title {
     margin: 0;
     color: var(--text-main);
-    font-size: clamp(22px, 2.4vw, 30px);
+    font-size: clamp(20px, 2.1vw, 26px);
     line-height: 1.2;
 }
 
 .poc-actions {
     display: flex;
-    gap: 10px;
+    gap: 6px;
     flex-wrap: wrap;
     justify-content: flex-end;
-    align-items: flex-end;
+    align-items: center;
 }
 
 .poc-control,
 .poc-volume-filter {
-    display: grid;
-    gap: 6px;
-    min-width: 220px;
-    padding: 10px 12px;
-    border-radius: 16px;
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: center;
+    column-gap: 8px;
+    width: fit-content;
+    min-width: 0;
+    padding: 7px 9px;
+    border-radius: 14px;
     background: rgba(255, 250, 241, 0.85);
     border: 1px solid #aa8e74;
     box-shadow: 0 8px 18px rgba(80, 52, 30, 0.04);
@@ -144,17 +155,21 @@ input {
 
 .poc-control span,
 .poc-volume-filter span {
+    grid-column: 1;
     color: var(--text-soft);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
+    white-space: nowrap;
 }
 
 #poc-activity-select {
+    grid-column: 2;
+    width: 155px;
     border: 1px solid #b79d85;
     background: #fffaf1;
     color: var(--text-main);
     border-radius: 999px;
-    padding: 9px 14px;
+    padding: 6px 10px;
     font-weight: 600;
     cursor: pointer;
     outline: none;
@@ -166,7 +181,9 @@ input {
 }
 
 #poc-min-volume {
-    width: 100%;
+    grid-column: 2;
+    width: 155px;
+    min-width: 135px;
     height: 6px;
     cursor: pointer;
     accent-color: var(--panel-strong);
@@ -178,9 +195,10 @@ input {
 
 .poc-filter-group {
     display: flex;
-    gap: 8px;
-    padding: 10px 12px;
-    border-radius: 16px;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 9px;
+    border-radius: 14px;
     background: rgba(255, 250, 241, 0.75);
     border: 1px solid #aa8e74;
 }
@@ -190,8 +208,9 @@ input {
     background: #f9f3ea;
     color: var(--text-main);
     border-radius: 999px;
-    padding: 9px 14px;
+    padding: 6px 10px;
     font-weight: 700;
+    font-size: 12px;
     cursor: pointer;
     transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
@@ -208,14 +227,18 @@ input {
 
 .poc-main-content {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: minmax(0, 1fr) 260px;
     gap: 12px;
-    margin-top: 16px;
+    margin-top: 8px;
     align-items: start;
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .poc-chart-area {
     min-width: 0;
+    min-height: 0;
+    display: flex;
 }
 
 .poc-dashboard-container,
@@ -227,9 +250,10 @@ input {
 
 .poc-dashboard-container {
     width: 100%;
-    min-height: 520px;
+    height: 100%;
+    min-height: 0;
     position: relative;
-    overflow: auto;
+    overflow: hidden;
 }
 
 .poc-dashboard-container svg {
@@ -242,7 +266,8 @@ input {
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(80, 52, 30, 0.06);
-    min-height: 520px;
+    min-height: 0;
+    height: 100%;
 }
 
 .poc-panel-header {
@@ -250,14 +275,14 @@ input {
     justify-content: space-between;
     align-items: center;
     gap: 12px;
-    padding: 14px 14px 12px;
+    padding: 12px 12px 10px;
     border-bottom: 1px solid #e6dbcd;
     background: #f6f1ea;
 }
 
 .poc-panel-header h3 {
     margin: 0;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 800;
     color: var(--text-main);
 }
@@ -285,85 +310,156 @@ input {
 }
 
 .poc-panel-content {
-    overflow-y: auto;
     flex: 1;
-    padding: 14px;
-    font-size: 13px;
+    overflow: hidden;
+    padding: 12px;
+    font-size: 12px;
     color: var(--text-soft);
+}
+
+.poc-detail-empty {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    height: 100%;
+}
+
+.poc-detail-empty__lead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-main);
+    font-weight: 700;
+}
+
+.poc-detail-empty__lead svg,
+.poc-route-status svg,
+.poc-step-chip svg,
+.poc-stat svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+}
+
+.poc-detail-empty__hint {
+    color: var(--text-soft);
+    line-height: 1.35;
 }
 
 .poc-route-detail {
-    width: 100%;
+    display: grid;
+    gap: 10px;
+    align-content: start;
 }
 
-.poc-route-detail-item {
-    margin-bottom: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #e6dbcd;
+.poc-route-header {
+    display: grid;
+    gap: 6px;
 }
 
-.poc-route-detail-item:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-}
-
-.poc-detail-label {
-    font-weight: 800;
+.poc-route-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #f4ede4;
+    border: 1px solid #d8c7b4;
     color: var(--text-main);
-    font-size: 12px;
-    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.05em;
 }
 
-.poc-detail-value {
-    color: var(--text-soft);
+.poc-route-status.is-finished {
+    background: rgba(91, 134, 197, 0.12);
+    border-color: rgba(91, 134, 197, 0.35);
+}
+
+.poc-route-status.is-unfinished {
+    background: rgba(193, 66, 66, 0.1);
+    border-color: rgba(193, 66, 66, 0.28);
+}
+
+.poc-route-title {
+    color: var(--text-main);
     font-size: 13px;
-    margin-bottom: 6px;
-    line-height: 1.45;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.poc-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.poc-stat {
+    display: grid;
+    gap: 4px;
+    padding: 8px;
+    border-radius: 12px;
+    background: #fff8f0;
+    border: 1px solid #e3d5c6;
+}
+
+.poc-stat__label {
+    color: var(--text-soft);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.poc-stat__value {
+    color: var(--text-main);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.poc-step-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.poc-step-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 999px;
+    background: #f8f2ea;
+    border: 1px solid #e2d3c1;
+    color: var(--text-main);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.poc-step-chip svg {
+    color: var(--accent-strong);
+}
+
+.poc-insight-list {
+    display: grid;
+    gap: 6px;
 }
 
 .poc-insight {
     background: #fff8f0;
     border-left: 3px solid #d4a574;
-    padding: 8px;
-    margin: 6px 0;
-    border-radius: 4px;
-    font-size: 12px;
-    line-height: 1.45;
+    padding: 6px 8px;
+    margin: 0;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.35;
 }
 
 .poc-insight strong {
     color: var(--text-main);
-}
-
-.poc-tooltip {
-    position: absolute;
-    pointer-events: none;
-    background: #241912;
-    color: #fff;
-    padding: 12px 14px;
-    border-radius: 10px;
-    border: 1px solid #d9b58f;
-    font-size: 14px;
-    line-height: 1.35;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
-    opacity: 0;
-    transition: opacity 0.15s ease;
-    max-width: 280px;
-    z-index: 30;
-}
-
-.poc-render-note {
-    margin: 8px 12px 0;
-    padding: 8px 10px;
-    border: 1px solid #e0d2c2;
-    border-radius: 8px;
-    background: #fff8ee;
-    color: #6a503b;
-    font-size: 12px;
-    line-height: 1.35;
 }
 
 .poc-navigator-frame {
@@ -424,7 +520,7 @@ input {
     shape-rendering: geometricPrecision;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 860px) {
     .poc-main-content {
         grid-template-columns: 1fr;
     }
@@ -449,17 +545,19 @@ input {
     }
 
     .poc-actions {
-        justify-content: stretch;
+        justify-content: flex-start;
     }
 
     .poc-control,
     .poc-volume-filter,
     .poc-filter-group {
-        width: 100%;
+        width: auto;
+        flex: 1 1 100%;
     }
 
     .poc-filter-group {
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: wrap;
     }
 
     .poc-dashboard-container {
