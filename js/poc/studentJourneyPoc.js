@@ -30,6 +30,34 @@ const EVENT_COLOR = {
     assignment_sub: "#c0ca33"
 };
 
+const EVENT_FA_ICON = {
+    course_vis: { className: "fa-mouse-pointer", color: "#8d6e63" },
+    resource_vis: { className: "fa-folder-open", color: "#e64a19" },
+    forum_vis: { className: "fa-comments", color: "#ff94c2" },
+    forum_participation: { className: "fa-comment-medical", color: "#00bcd4" },
+    assignment_vis: { className: "fa-file-alt", color: "#00897b" },
+    assignment_try: { className: "fa-check", color: "#819ca9" },
+    assignment_sub: { className: "fa-check-double", color: "#c0ca33" }
+};
+
+function getEventIcon(eventName) {
+    return EVENT_FA_ICON[eventName] || null;
+}
+
+function appendFaIcon(selection, iconInfo, size) {
+    selection
+        .append("xhtml:div")
+        .style("display", "flex")
+        .style("align-items", "center")
+        .style("justify-content", "center")
+        .style("width", "100%")
+        .style("height", "100%")
+        .style("color", iconInfo.color)
+        .style("font-size", `${size}px`)
+        .style("line-height", "1")
+        .html(`<i class="fa-solid ${iconInfo.className}"></i>`);
+}
+
 const EVENT_ICON = {
     course_vis: '<path d="M5 5h7v14H5z"></path><path d="M12 5h7v14h-7z"></path>',
     resource_vis: '<path d="M7 4h8l4 4v12H7z"></path><path d="M15 4v4h4"></path>',
@@ -359,7 +387,7 @@ function renderTrajectoryChart({
     const width = chartContainer.node().clientWidth || 1100;
     const availableHeight = detailPanelContainer.node().clientHeight || chartContainer.node().clientHeight || 420;
     const height = Math.max(240, availableHeight);
-    const margin = { top: 16, right: 20, bottom: 48, left: 164 };
+    const margin = { top: 16, right: 20, bottom: 48, left: 190 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
     const maxSteps = d3.max(groupedRoutes, (d) => d.route.length) || 1;
@@ -428,11 +456,45 @@ function renderTrajectoryChart({
         .call((axis) => axis.selectAll("text").attr("fill", "#5f4a39").style("font-size", "12px"))
         .call((axis) => axis.select(".domain").attr("stroke", "#9a8c7f"));
 
-    root
+    const yAxis = root
         .append("g")
         .call(d3.axisLeft(y))
         .call((axis) => axis.selectAll("text").attr("fill", "#5f4a39").style("font-size", "12px"))
         .call((axis) => axis.select(".domain").attr("stroke", "#9a8c7f"));
+
+    yAxis.selectAll(".tick").each(function (eventLabel) {
+        // Pular renderização para "Entrega" (assignment_sub)
+        if (eventLabel === "Entrega") {
+            return;
+        }
+
+        const eventName = EVENT_ORDER.find((name) => EVENT_LABEL[name] === eventLabel);
+        const iconInfo = eventName ? getEventIcon(eventName) : null;
+
+        if (!iconInfo || eventName === "assignment_sub") {
+            return;
+        }
+
+        const iconBox = d3.select(this)
+            .insert("foreignObject", ":first-child")
+            .attr("class", "poc-yaxis-icon")
+            .attr("x", -58)
+            .attr("y", -12)
+            .attr("width", 28)
+            .attr("height", 28)
+            .style("overflow", "visible")
+            .style("pointer-events", "none");
+
+        appendFaIcon(iconBox, iconInfo, 18);
+    });
+
+    // Garante remoção de qualquer foreignObject em "Entrega"
+    d3.selectAll(".y-axis .tick").each(function () {
+        const tickText = d3.select(this).select("text").text().trim();
+        if (tickText === "Entrega") {
+            d3.select(this).selectAll("foreignObject").remove();
+        }
+    });
 
     root
         .append("rect")
@@ -531,16 +593,27 @@ function renderTrajectoryChart({
         group
             .selectAll(".route-dot")
             .data(points)
-            .join("circle")
+            .join("foreignObject")
             .attr("class", "route-dot")
-            .attr("cx", (d) => x(d.step + 1))
-            .attr("cy", (d) => y(EVENT_LABEL[d.event]))
-            .attr("r", 3)
-            .attr("fill", (d) => EVENT_COLOR[d.event] || getRouteColor(routeData))
-            .attr("opacity", Math.min(1, getRouteOpacity(routeData) + 0.18))
-            .attr("stroke", "#f6f2eb")
-            .attr("stroke-width", 0.8)
-            .style("pointer-events", "none");
+            .attr("x", (d) => x(d.step + 1) - 9)
+            .attr("y", (d) => y(EVENT_LABEL[d.event]) - 9)
+            .attr("width", 18)
+            .attr("height", 18)
+            .style("overflow", "visible")
+            .style("pointer-events", "none")
+            .style("opacity", Math.min(1, getRouteOpacity(routeData) + 0.22));
+
+        group
+            .selectAll(".route-dot")
+            .each(function (d) {
+                const iconInfo = getEventIcon(d.event);
+
+                if (!iconInfo) {
+                    return;
+                }
+
+                appendFaIcon(d3.select(this), iconInfo, 16);
+            });
 
         if (submissionPoint) {
             group
