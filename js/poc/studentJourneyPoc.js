@@ -65,7 +65,7 @@ const EVENT_ICON = {
     forum_participation: '<path d="M7 16c0-2 1.7-3.5 4-3.5s4 1.5 4 3.5"></path><circle cx="11" cy="8" r="2.3"></circle><path d="M15.5 8.5h3"></path><path d="M17 7v3"></path>',
     assignment_vis: '<path d="M7 4h10v16H7z"></path><path d="M9 8h6"></path><path d="M9 11h6"></path>',
     assignment_try: '<path d="M5.5 15.5l7.8-7.8 2.9 2.9-7.8 7.8H5.5z"></path><path d="M14.2 7.8l1.9-1.9 2.9 2.9-1.9 1.9"></path>',
-    assignment_sub: '<path d="M5 12.5 9 16l10-11"></path><circle cx="12" cy="12" r="8"></circle>'
+    assignment_sub: '<path d="M7 12l5 5l10-10"></path><path d="M2 12l5 5l5-5"></path>'
 };
 
 function svgIconMarkup(iconName, className = "") {
@@ -458,42 +458,33 @@ function renderTrajectoryChart({
 
     const yAxis = root
         .append("g")
-        .call(d3.axisLeft(y))
-        .call((axis) => axis.selectAll("text").attr("fill", "#5f4a39").style("font-size", "12px"))
+        .call(d3.axisLeft(y).tickPadding(0).tickSize(6))
+        .call((axis) => axis.selectAll("text")
+            .attr("fill", "#5f4a39")
+            .style("font-size", "12px")
+            .style("text-anchor", "start")
+            .attr("x", -130))
         .call((axis) => axis.select(".domain").attr("stroke", "#9a8c7f"));
 
     yAxis.selectAll(".tick").each(function (eventLabel) {
-        // Pular renderização para "Entrega" (assignment_sub)
-        if (eventLabel === "Entrega") {
-            return;
-        }
-
         const eventName = EVENT_ORDER.find((name) => EVENT_LABEL[name] === eventLabel);
         const iconInfo = eventName ? getEventIcon(eventName) : null;
 
-        if (!iconInfo || eventName === "assignment_sub") {
+        if (!iconInfo) {
             return;
         }
 
         const iconBox = d3.select(this)
             .insert("foreignObject", ":first-child")
             .attr("class", "poc-yaxis-icon")
-            .attr("x", -58)
-            .attr("y", -12)
+            .attr("x", -160)
+            .attr("y", -14)
             .attr("width", 28)
             .attr("height", 28)
             .style("overflow", "visible")
             .style("pointer-events", "none");
 
         appendFaIcon(iconBox, iconInfo, 18);
-    });
-
-    // Garante remoção de qualquer foreignObject em "Entrega"
-    d3.selectAll(".y-axis .tick").each(function () {
-        const tickText = d3.select(this).select("text").text().trim();
-        if (tickText === "Entrega") {
-            d3.select(this).selectAll("foreignObject").remove();
-        }
     });
 
     root
@@ -615,19 +606,7 @@ function renderTrajectoryChart({
                 appendFaIcon(d3.select(this), iconInfo, 16);
             });
 
-        if (submissionPoint) {
-            group
-                .append("circle")
-                .attr("class", "route-submission-marker")
-                .attr("cx", x(submissionPoint.step + 1))
-                .attr("cy", y(EVENT_LABEL[submissionPoint.event]))
-                .attr("r", 9)
-                .attr("fill", "#fffce6")
-                .attr("stroke", EVENT_COLOR.assignment_sub)
-                .attr("stroke-width", 3)
-                .attr("opacity", isHighlighted(routeData) ? 1 : 0.85)
-                .style("pointer-events", "none");
-        } else {
+        if (!submissionPoint) {
             group
                 .append("circle")
                 .attr("class", "route-terminal")
