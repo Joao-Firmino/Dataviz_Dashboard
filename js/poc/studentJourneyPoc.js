@@ -110,14 +110,15 @@ function simplifyAssignmentSequence(route) {
     if (!Array.isArray(route)) return [];
     if (route.length === 0) return route.slice();
 
-    const normalizedRoute = route.filter((value, index) => index === 0 || value !== route[index - 1]);
+    const normalizedRoute = route.filter((value, index) => index === 0 || value.event !== route[index - 1].event);
     const simplifiedRoute = [];
 
     for (let index = 0; index < normalizedRoute.length; index += 1) {
-        const currentEvent = normalizedRoute[index];
+        const currentItem = normalizedRoute[index];
+        const currentEvent = currentItem.event;
 
         if (currentEvent !== "assignment_vis" && currentEvent !== "assignment_try" && currentEvent !== "assignment_sub") {
-            simplifiedRoute.push(currentEvent);
+            simplifiedRoute.push(currentItem);
             continue;
         }
 
@@ -125,19 +126,23 @@ function simplifyAssignmentSequence(route) {
 
         while (
             clusterEnd + 1 < normalizedRoute.length &&
-            ["assignment_vis", "assignment_try", "assignment_sub"].includes(normalizedRoute[clusterEnd + 1])
+            ["assignment_vis", "assignment_try", "assignment_sub"].includes(normalizedRoute[clusterEnd + 1].event)
         ) {
             clusterEnd += 1;
         }
 
         const cluster = normalizedRoute.slice(index, clusterEnd + 1);
 
-        if (cluster.includes("assignment_sub")) {
-            simplifiedRoute.push("assignment_sub");
-        } else if (cluster.includes("assignment_try")) {
-            simplifiedRoute.push("assignment_try");
+        const sub = cluster.find(c => c.event === "assignment_sub");
+        const tryMatch = cluster.find(c => c.event === "assignment_try");
+        const vis = cluster.find(c => c.event === "assignment_vis");
+
+        if (sub) {
+            simplifiedRoute.push(sub);
+        } else if (tryMatch) {
+            simplifiedRoute.push(tryMatch);
         } else {
-            simplifiedRoute.push("assignment_vis");
+            simplifiedRoute.push(vis);
         }
 
         index = clusterEnd;
@@ -147,6 +152,9 @@ function simplifyAssignmentSequence(route) {
 }
 
 function routeHasSubmission(route) {
+    if (route.length > 0 && typeof route[0] === 'object') {
+        return route.some(r => r.event === "assignment_sub");
+    }
     return route.includes("assignment_sub");
 }
 
@@ -184,8 +192,9 @@ function buildUserRoutes(logRows, eventMap, gradeByUser) {
                 return;
             }
 
-            if (route[route.length - 1] !== mappedEvent) {
-                route.push(mappedEvent);
+            // Coalesce repeating pointing events into one
+            if (route.length === 0 || route[route.length - 1].event !== mappedEvent) {
+                route.push({ event: mappedEvent, t: Number(row.t) });
             }
         });
 
@@ -208,9 +217,15 @@ function groupRoutes(userRoutes) {
     const grouped = d3.rollup(
         userRoutes,
         (rows) => {
-            const route = rows[0].route.slice();
+            const sampleRoute = rows[0].route.slice();
             const students = rows.map((d) => d.userId);
             const grades = rows.map((d) => d.grade);
+
+            const route = sampleRoute.map((step, i) => {
+                const avgSeconds = d3.mean(rows, r => r.route[i].t - r.route[0].t);
+                // Convert seconds to hours
+                return { event: step.event, t: avgSeconds / 3600, step: i };
+            });
 
             return {
                 route,
@@ -220,7 +235,7 @@ function groupRoutes(userRoutes) {
                 hasSubmission: routeHasSubmission(route)
             };
         },
-        (d) => `${routeHasSubmission(d.route) ? "1" : "0"}|${d.route.join(">")}`
+        (d) => `${routeHasSubmission(d.route) ? "1" : "0"}|${d.route.map(r => r.event).join(">")}`
     );
 
     return Array.from(grouped, ([routeKey, summary]) => ({
@@ -234,7 +249,7 @@ function groupRoutes(userRoutes) {
 }
 
 function getRouteLabel(route) {
-    return route.map((step) => EVENT_LABEL[step] || step).join(" → ");
+    return route.map((step) => EVENT_LABEL[step.event || step] || (step.event || step)).join(" → ");
 }
 
 function buildInsights(routeData, allRoutes) {
@@ -261,6 +276,12 @@ function buildInsights(routeData, allRoutes) {
     if (routeData.route.length >= 6) {
         insights.push("A trajetória tem <strong>mais passos</strong> e tende a ser mais longa.");
     }
+    
+    // Add time insight
+    const targetEnd = routeData.route[routeData.route.length - 1];
+    if (targetEnd && targetEnd.t > 0) {
+        insights.push(`Tempo médio de conclusão: <strong>${targetEnd.t.toFixed(1)} horas</strong>.`);
+    }
 
     return insights.slice(0, 3);
 }
@@ -280,7 +301,7 @@ function renderDetailPanel(detailPanelSelection, routeData, allRoutes, options =
 
     const routeLabel = getRouteLabel(routeData.route);
     const insights = buildInsights(routeData, allRoutes);
-    const stepsMarkup = routeData.route.map((step) => getEventChipMarkup(step)).join("");
+    const stepsMarkup = routeData.route.map((step) => getEventChipMarkup(step.event || step)).join("");
     const studentsPreview = routeData.students.slice(0, 6).join(", ");
     const moreStudents = routeData.students.length > 6 ? ` +${routeData.students.length - 6}` : "";
 
@@ -387,32 +408,36 @@ function renderTrajectoryChart({
     const width = chartContainer.node().clientWidth || 1100;
     const availableHeight = detailPanelContainer.node().clientHeight || chartContainer.node().clientHeight || 420;
     const height = Math.max(240, availableHeight);
-    const margin = { top: 16, right: 20, bottom: 48, left: 190 };
+    const margin = { top: 32, right: 20, bottom: 48, left: 190 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
-    const maxSteps = d3.max(groupedRoutes, (d) => d.route.length) || 1;
-    const minVisibleSteps = Math.min(2, maxSteps);
+    
+    // Find min and max time from routes
+    let maxTime = 0;
+    groupedRoutes.forEach(g => {
+        const routeMax = d3.max(g.route, r => r.t) || 0;
+        if (routeMax > maxTime) maxTime = routeMax;
+    });
+    
+    if (maxTime === 0) maxTime = 1;
 
     if (!state.viewport) {
-        const initialEnd = Math.min(maxSteps, 5);
-        state.viewport = { start: 1, end: initialEnd };
+        // Initial viewport: 0 to min of 72 hours (3 days) or maxTime
+        state.viewport = { start: 0, end: Math.min(maxTime, 72) }; 
     }
 
-    const clampedStart = Math.max(1, Math.min(maxSteps, Math.round(state.viewport.start || 1)));
-    const clampedEnd = Math.max(clampedStart, Math.min(maxSteps, Math.round(state.viewport.end || maxSteps)));
-    const span = clampedEnd - clampedStart + 1;
+    const clampedStart = Math.max(0, Math.min(maxTime, state.viewport.start || 0));
+    const clampedEnd = Math.max(clampedStart, Math.min(maxTime, state.viewport.end || maxTime));
+    const span = clampedEnd - clampedStart;
 
-    if (span < minVisibleSteps) {
-        state.viewport.start = Math.max(1, clampedEnd - minVisibleSteps + 1);
-        state.viewport.end = Math.min(maxSteps, state.viewport.start + minVisibleSteps - 1);
+    if (span <= 1) { // minimum 1 hour visible
+        state.viewport.start = Math.max(0, clampedEnd - 1);
+        state.viewport.end = Math.min(maxTime, state.viewport.start + 1);
     } else {
         state.viewport.start = clampedStart;
         state.viewport.end = clampedEnd;
     }
 
-    const visibleSteps = d3.range(state.viewport.start, state.viewport.end + 1);
-    const stepStride = Math.max(1, Math.ceil(visibleSteps.length / 12));
-    const xTicks = visibleSteps.filter((step, index) => index % stepStride === 0 || step === state.viewport.end);
     const yDomain = EVENT_ORDER.map((eventName) => EVENT_LABEL[eventName]);
     const denseMode = routesForChart.length > 120;
 
@@ -438,7 +463,7 @@ function renderTrajectoryChart({
         .append("g")
         .attr("class", "x-grid")
         .attr("transform", `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(x).tickValues(xTicks).tickSize(-innerHeight).tickFormat(""))
+        .call(d3.axisBottom(x).ticks(10).tickSize(-innerHeight).tickFormat(""))
         .call((axis) => axis.select(".domain").remove())
         .call((axis) => axis.selectAll("line").attr("stroke", "#e9e2d8").attr("stroke-dasharray", "3 5"));
 
@@ -452,9 +477,18 @@ function renderTrajectoryChart({
     root
         .append("g")
         .attr("transform", `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(x).tickValues(xTicks).tickFormat((step) => `${step}`))
+        .call(d3.axisBottom(x).ticks(10).tickFormat((t) => `${Math.round(t)}h`))
         .call((axis) => axis.selectAll("text").attr("fill", "#5f4a39").style("font-size", "12px"))
         .call((axis) => axis.select(".domain").attr("stroke", "#9a8c7f"));
+
+    // Add X-axis label
+    root.append("text")
+        .attr("x", innerWidth)
+        .attr("y", innerHeight - 8)
+        .attr("fill", "#9a8c7f")
+        .style("font-size", "12px")
+        .style("text-anchor", "end")
+        .text("Tempo desde o início (horas)");
 
     const yAxis = root
         .append("g")
@@ -505,7 +539,7 @@ function renderTrajectoryChart({
 
     const lineGenerator = d3
         .line()
-        .x((d) => x(d.step + 1))
+        .x((d) => x(d.t))
         .y((d) => y(EVENT_LABEL[d.event]))
         .curve(d3.curveLinear);
 
@@ -547,9 +581,9 @@ function renderTrajectoryChart({
 
     routeGroup.each(function (routeData) {
         const group = d3.select(this);
-        const points = routeData.route.map((eventName, step) => ({ event: eventName, step }));
+        const points = routeData.route;
         const terminalPoint = points[points.length - 1];
-        const submissionIndex = routeData.route.indexOf("assignment_sub");
+        const submissionIndex = routeData.route.findIndex(r => r.event === "assignment_sub");
         const submissionPoint = submissionIndex >= 0 ? points[submissionIndex] : null;
 
         group
@@ -586,7 +620,7 @@ function renderTrajectoryChart({
             .data(points)
             .join("foreignObject")
             .attr("class", "route-dot")
-            .attr("x", (d) => x(d.step + 1) - 9)
+            .attr("x", (d) => x(d.t) - 9)
             .attr("y", (d) => y(EVENT_LABEL[d.event]) - 9)
             .attr("width", 18)
             .attr("height", 18)
@@ -606,11 +640,11 @@ function renderTrajectoryChart({
                 appendFaIcon(d3.select(this), iconInfo, 16);
             });
 
-        if (!submissionPoint) {
+        if (!submissionPoint && terminalPoint) {
             group
                 .append("circle")
                 .attr("class", "route-terminal")
-                .attr("cx", x(terminalPoint.step + 1))
+                .attr("cx", x(terminalPoint.t))
                 .attr("cy", y(EVENT_LABEL[terminalPoint.event]))
                 .attr("r", 6)
                 .attr("fill", "#ffffff")
@@ -624,12 +658,15 @@ function renderTrajectoryChart({
 
     const navigatorHeight = 20;
     const navigatorY = innerHeight + 24;
-    const stepLoad = Array.from({ length: maxSteps }, () => 0);
+    
+    const maxHour = Math.ceil(maxTime);
+    const stepLoad = Array.from({ length: maxHour + 1 }, () => 0);
 
     routesForChart.forEach((routeData) => {
-        routeData.route.forEach((_, index) => {
-            if (stepLoad[index] !== undefined) {
-                stepLoad[index] += routeData.totalStudents;
+        routeData.route.forEach((step) => {
+            const h = Math.round(step.t);
+            if (h >= 0 && h <= maxHour) {
+                stepLoad[h] += routeData.totalStudents;
             }
         });
     });
@@ -646,13 +683,14 @@ function renderTrajectoryChart({
     let lastStepWithData = 0;
     for (let i = stepLoad.length - 1; i >= 0; i--) {
         if (stepLoad[i] > 0) {
-            lastStepWithData = i + 1;
+            lastStepWithData = i;
             break;
         }
     }
-    const effectiveMaxSteps = lastStepWithData > 0 ? lastStepWithData : maxSteps;
+    const effectiveMaxSteps = lastStepWithData > 0 ? lastStepWithData : maxHour;
+    const effectiveMaxTime = effectiveMaxSteps || 1;
 
-    const xNavigator = d3.scaleLinear().domain([1, effectiveMaxSteps]).range([0, innerWidth]);
+    const xNavigator = d3.scaleLinear().domain([0, effectiveMaxTime]).range([0, innerWidth]);
     const maxLoad = d3.max(stepLoad) || 1;
     const yNavigator = d3
         .scaleLinear()
@@ -660,13 +698,13 @@ function renderTrajectoryChart({
         .range([navigatorHeight, 0]);
     const navigatorArea = d3
         .area()
-        .x((_, index) => xNavigator(index + 1))
+        .x((_, index) => xNavigator(index))
         .y0(navigatorHeight)
         .y1((value) => yNavigator(value))
         .curve(d3.curveMonotoneX);
     const navigatorLine = d3
         .line()
-        .x((_, index) => xNavigator(index + 1))
+        .x((_, index) => xNavigator(index))
         .y((value) => yNavigator(value))
         .curve(d3.curveMonotoneX);
 
@@ -713,7 +751,7 @@ function renderTrajectoryChart({
         .attr("stroke", "#e3d8ca")
         .attr("stroke-width", 1);
 
-    const miniBarWidth = Math.max(2, (innerWidth / Math.max(effectiveMaxSteps, 1)) * 0.72);
+    const miniBarWidth = Math.max(2, (innerWidth / Math.max(effectiveMaxTime, 1)) * 0.72);
 
     navigator
         .append("g")
@@ -724,7 +762,7 @@ function renderTrajectoryChart({
         .enter()
         .append("rect")
         .attr("class", "poc-navigator-mini-bar")
-        .attr("x", (_, index) => xNavigator(index + 1) - miniBarWidth / 2)
+        .attr("x", (_, index) => xNavigator(index) - miniBarWidth / 2)
         .attr("y", (value) => yNavigator(value))
         .attr("width", miniBarWidth)
         .attr("height", (value) => Math.max(1, navigatorHeight - yNavigator(value)))
@@ -747,16 +785,17 @@ function renderTrajectoryChart({
 
     function getViewportFromSelection(selection) {
         if (!selection) {
-            return { start: 1, end: effectiveMaxSteps };
+            return { start: 0, end: effectiveMaxTime };
         }
 
         const [x0, x1] = selection;
-        let nextStart = Math.max(1, Math.round(xNavigator.invert(x0)));
-        let nextEnd = Math.min(effectiveMaxSteps, Math.round(xNavigator.invert(x1)));
-
-        if ((nextEnd - nextStart + 1) < minVisibleSteps) {
-            nextEnd = Math.min(effectiveMaxSteps, nextStart + minVisibleSteps - 1);
-            nextStart = Math.max(1, nextEnd - minVisibleSteps + 1);
+        let nextStart = Math.max(0, xNavigator.invert(x0));
+        let nextEnd = Math.min(effectiveMaxTime, xNavigator.invert(x1));
+        
+        // Ensure at least 1 hour visible
+        if (nextEnd - nextStart < 1) {
+            nextEnd = Math.min(effectiveMaxTime, nextStart + 1);
+            nextStart = Math.max(0, nextEnd - 1);
         }
 
         return { start: nextStart, end: nextEnd };
@@ -777,13 +816,6 @@ function renderTrajectoryChart({
 
             const nextViewport = getViewportFromSelection(event.selection);
             const snappedSelection = toSelectionPixels(nextViewport);
-            const selectionChanged = !event.selection
-                || Math.abs(event.selection[0] - snappedSelection[0]) > 0.5
-                || Math.abs(event.selection[1] - snappedSelection[1]) > 0.5;
-
-            if (selectionChanged) {
-                brushGroup.call(brush.move, snappedSelection);
-            }
 
             const hasChanged = nextViewport.start !== state.viewport.start || nextViewport.end !== state.viewport.end;
             if (!hasChanged) {
@@ -797,7 +829,8 @@ function renderTrajectoryChart({
     const brushGroup = navigator
         .append("g")
         .attr("class", "poc-navigator-brush")
-        .call(brush);
+        .call(brush)
+        .call(brush.move, toSelectionPixels(state.viewport));
 
     brushGroup.call(brush.move, [xNavigator(state.viewport.start), xNavigator(state.viewport.end)]);
 
