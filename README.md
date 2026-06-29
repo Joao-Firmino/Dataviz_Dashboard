@@ -1,7 +1,7 @@
 # Dataviz Dashboard - Jornada do Estudante
 
 Dashboard independente criado a partir da aba de trajetória do dashboard antigo.
-Usa os mesmos CSVs locais copiados para a pasta `data/` e roda sem depender do projeto original.
+Agora ele consome a API do `ws-mestrado` para buscar metadados e timelines por atividade.
 
 ## Estrutura
 
@@ -9,8 +9,8 @@ Usa os mesmos CSVs locais copiados para a pasta `data/` e roda sem depender do p
 - `styles/main.css`: estilos da página, header e visualização.
 - `js/main.js`: bootstrap da aplicação.
 - `js/poc/studentJourneyPoc.js`: tratamento de dados e renderização da jornada.
-- `js/poc/loadDashboardData.js`: carregamento dos CSVs.
-- `data/`: cópia dos dados usados pela PoC.
+- `js/poc/loadDashboardData.js`: cliente da API e cache das timelines.
+- `data/`: base histórica mantida no repositório, mas não usada pelo fluxo principal da PoC.
 - `js/vendor/lodash.js`: biblioteca local copiada do projeto original.
 
 ## Como rodar
@@ -22,3 +22,5 @@ Exemplo:
 ```bash
 python -m http.server 8000
 ```
+
+Por padrão o dashboard chama a API em `http://localhost:8000`. Se precisar apontar para outro endereço, defina `window.DATAVIZ_API_URL` antes de carregar `js/main.js`.

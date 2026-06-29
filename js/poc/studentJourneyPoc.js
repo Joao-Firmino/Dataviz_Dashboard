@@ -204,6 +204,35 @@ function buildUserRoutes(logRows, eventMap, gradeByUser) {
     return userRoutes;
 }
 
+function buildUserRoutesFromTimeline(users) {
+    if (!Array.isArray(users)) {
+        return [];
+    }
+
+    return users
+        .map((user) => {
+            const route = (user.events || [])
+                .map((eventData) => String(eventData.class || eventData.event || "").trim())
+                .map((eventName) => eventName.split("_SOME")[0].split("_MANY")[0].split("_START")[0].split("_END")[0])
+                .filter((eventName) => EVENT_ORDER.includes(eventName));
+
+            if (!route.length) {
+                return null;
+            }
+
+            const simplifiedRoute = simplifyAssignmentSequence(route);
+            const gradeRatio = Number(user.grade_ratio);
+
+            return {
+                userId: String(user.userid),
+                route: simplifiedRoute,
+                hasSubmission: routeHasSubmission(simplifiedRoute),
+                grade: Number.isFinite(gradeRatio) ? gradeRatio * 10 : 0
+            };
+        })
+        .filter(Boolean);
+}
+
 function groupRoutes(userRoutes) {
     const grouped = d3.rollup(
         userRoutes,
@@ -860,10 +889,9 @@ async function renderStudentJourneyPoC() {
 
     try {
         const dataStore = await loadDashboardData();
-        const eventMap = buildEventMap(dataStore.eventMapping);
 
-        if (!eventMap.size) {
-            throw new Error("Event mapping is empty");
+        if (!dataStore.quizList.length) {
+            throw new Error("Nenhuma atividade retornada pela API.");
         }
 
         activitySelect.selectAll("option").remove();
@@ -884,16 +912,20 @@ async function renderStudentJourneyPoC() {
         };
 
         let currentGroupedRoutes = [];
+        let currentTimeline = dataStore.timelinesByQuizId[dataStore.quizList[0].id];
 
         function getGroupedRoutesForCurrentActivity() {
             const parsedIndex = Number(state.activityIndex);
             const safeIndex = Number.isNaN(parsedIndex) ? 0 : parsedIndex;
             const selectedActivity = dataStore.quizList[safeIndex] || dataStore.quizList[0];
 
-            const filteredLogs = filterLogsByActivity(dataStore.logs, selectedActivity);
-            const filteredGrades = dataStore.quizGrades.filter((row) => String(row.id) === String(selectedActivity.id));
-            const gradeByUser = buildGradeByUser(filteredGrades);
-            const userRoutes = buildUserRoutes(filteredLogs, eventMap, gradeByUser);
+            currentTimeline = dataStore.timelinesByQuizId[selectedActivity.id];
+
+            if (!currentTimeline) {
+                throw new Error(`Timeline não encontrada para a atividade ${selectedActivity.name}.`);
+            }
+
+            const userRoutes = buildUserRoutesFromTimeline(currentTimeline.users);
 
             return {
                 selectedActivity,
@@ -918,7 +950,7 @@ async function renderStudentJourneyPoC() {
                 btnAll,
                 btnDrop,
                 groupedRoutes: currentGroupedRoutes,
-                activityName: activityData.selectedActivity.name,
+                activityName: currentTimeline?.quiz?.name || activityData.selectedActivity.name,
                 state,
                 onStateChange: refreshChart
             });

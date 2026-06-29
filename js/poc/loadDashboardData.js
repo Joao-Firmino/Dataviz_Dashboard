@@ -1,35 +1,97 @@
-let dashboardDataPromise = null;
+const DEFAULT_API_BASE = "http://localhost:8000";
 
-function cloneRows(rows) {
-    return rows.map((row) => ({ ...row }));
-}
+const DEFAULT_TIMELINE_REQUEST = {
+    simplification: {
+        multilevel: false,
+        coalescing_repeating: false,
+        coalescing_hidden: true,
+        spell: false,
+        temporal_folding: false
+    },
+    thresholds: {
+        low_grade: 0.5,
+        high_grade: 0.75,
+        delta_drop: 0.2,
+        delta_rise: 0.15,
+        late_try_hours: 24,
+        inactivity_days: 5,
+        resource_prep_days: 7
+    },
+    declutter_mode: "first_class",
+    max_users: 300,
+    hide_rare_classes: true,
+    compare_mode: "team"
+};
 
-async function loadDashboardData() {
-    if (!dashboardDataPromise) {
-        dashboardDataPromise = Promise.all([
-            d3.csv("./data/see_course2060_quiz_list.csv"),
-            d3.csv("./data/see_course2060_12-11_to_11-12_logs_filtered.csv"),
-            d3.csv("./data/event_mapping.csv"),
-            d3.csv("./data/see_course2060_quiz_grades.csv"),
-            d3.csv("./data/user_list_see.csv")
-        ]).then((filesRead) => ({
-            quizList: filesRead[0],
-            logs: filesRead[1],
-            eventMapping: filesRead[2],
-            quizGrades: filesRead[3],
-            users: filesRead[4]
-        }));
+function getApiBase() {
+    if (typeof window !== "undefined" && window.DATAVIZ_API_URL) {
+        return window.DATAVIZ_API_URL;
     }
 
-    const data = await dashboardDataPromise;
+    return DEFAULT_API_BASE;
+}
 
+async function fetchJson(path, init = {}) {
+    const response = await fetch(`${getApiBase()}${path}`, {
+        ...init,
+        headers: {
+            "Content-Type": "application/json",
+            ...(init.headers || {})
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`API ${response.status}: ${await response.text()}`);
+    }
+
+    return response.json();
+}
+
+function buildTimelineRequest(assignmentId, overrides = {}) {
     return {
-        quizList: cloneRows(data.quizList),
-        logs: cloneRows(data.logs),
-        eventMapping: cloneRows(data.eventMapping),
-        quizGrades: cloneRows(data.quizGrades),
-        users: cloneRows(data.users)
+        assignment_id: assignmentId,
+        t_start: overrides.t_start ?? null,
+        t_end: overrides.t_end ?? null,
+        user_ids: overrides.user_ids ?? null,
+        cities: overrides.cities ?? null,
+        event_classes: overrides.event_classes ?? null,
+        segment: overrides.segment ?? null,
+        simplification: {
+            ...DEFAULT_TIMELINE_REQUEST.simplification,
+            ...(overrides.simplification || {})
+        },
+        thresholds: {
+            ...DEFAULT_TIMELINE_REQUEST.thresholds,
+            ...(overrides.thresholds || {})
+        },
+        declutter_mode: overrides.declutter_mode ?? DEFAULT_TIMELINE_REQUEST.declutter_mode,
+        max_users: overrides.max_users ?? DEFAULT_TIMELINE_REQUEST.max_users,
+        hide_rare_classes: overrides.hide_rare_classes ?? DEFAULT_TIMELINE_REQUEST.hide_rare_classes,
+        compare_mode: overrides.compare_mode ?? DEFAULT_TIMELINE_REQUEST.compare_mode
     };
 }
 
+async function loadDashboardData() {
+    const meta = await fetchJson("/api/meta");
+    const quizList = Array.isArray(meta.quizzes) ? meta.quizzes.slice() : [];
+
+    const timelines = await Promise.all(
+        quizList.map(async (quiz) => {
+            const timeline = await fetchJson("/api/timeline", {
+                method: "POST",
+                body: JSON.stringify(buildTimelineRequest(quiz.id))
+            });
+
+            return [quiz.id, timeline];
+        })
+    );
+
+    return {
+        meta,
+        quizList,
+        timelinesByQuizId: Object.fromEntries(timelines)
+    };
+}
+
+export { buildTimelineRequest };
 export default loadDashboardData;
