@@ -362,6 +362,241 @@ function buildNarrativeRoutes(groupedRoutes, narrativeMode, minVolume) {
     return volumeFiltered;
 }
 
+const STORY_CATEGORY_META = {
+    deadline: { label: "Prazo e urgência", icon: "clock" },
+    prep: { label: "Preparação e percurso", icon: "route" },
+    bottleneck: { label: "Gargalos de conversão", icon: "user-exclamation" },
+    social: { label: "Fórum e engajamento social", icon: "comments" },
+    rhythm: { label: "Ritmo de estudo", icon: "running" },
+    profile: { label: "Perfis comportamentais", icon: "lightbulb" }
+};
+
+const STORY_HIGHLIGHT_LABELS = {
+    risk: "Risco",
+    good: "Positiva",
+    attention: "Atenção"
+};
+
+const STORY_HIGHLIGHT_TONES = {
+    risk: { label: "Risco Alto", accent: "#c44", soft: "rgba(196, 68, 68, 0.12)" },
+    good: { label: "Positiva", accent: "#2f8f5b", soft: "rgba(47, 143, 91, 0.12)" },
+    attention: { label: "Atenção", accent: "#b46f12", soft: "rgba(180, 111, 18, 0.12)" }
+};
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function getStoryCategoryMeta(category) {
+    return STORY_CATEGORY_META[category] || { label: category || "Outras narrativas", icon: "bulb" };
+}
+
+function groupStories(stories) {
+    const grouped = stories.reduce((acc, story) => {
+        const category = story.category || "other";
+        (acc[category] ??= []).push(story);
+        return acc;
+    }, {});
+
+    const categoryOrder = ["deadline", "prep", "bottleneck", "social", "rhythm", "profile"];
+
+    return Object.entries(grouped)
+        .map(([category, items]) => ({ category, items: items.slice().sort((a, b) => d3.descending(a.affected_count, b.affected_count)) }))
+        .sort((a, b) => {
+            const aIndex = categoryOrder.indexOf(a.category);
+            const bIndex = categoryOrder.indexOf(b.category);
+            if (aIndex === -1 && bIndex === -1) return d3.ascending(a.category, b.category);
+            if (aIndex === -1) return 1;
+            if (bIndex === -1) return -1;
+            return d3.ascending(aIndex, bIndex);
+        });
+}
+
+function renderStoryDetailPanel(detailPanelSelection, story, timeline, activityName) {
+    if (!story) {
+        detailPanelSelection.html(`
+            <div class="poc-detail-empty">
+                <div class="poc-detail-empty__lead">${svgIconMarkup("forum_vis", "")}Selecione uma estória</div>
+                <div class="poc-detail-empty__hint">As narrativas aparecem agrupadas por categoria. Clique em um cartão para ver a definição, o impacto e os alunos afetados.</div>
+            </div>
+        `);
+        return;
+    }
+
+    const meta = getStoryCategoryMeta(story.category);
+    const params = Array.isArray(story.params) ? story.params : [];
+    const affectedUsers = Array.isArray(story.affected_users) ? story.affected_users : [];
+    const sampleUsers = affectedUsers.slice(0, 8).join(", ");
+    const remainingUsers = affectedUsers.length > 8 ? ` +${affectedUsers.length - 8}` : "";
+    const activeRules = Array.isArray(timeline?.active_rules) ? timeline.active_rules : [];
+    const tone = STORY_HIGHLIGHT_TONES[story.highlight] || STORY_HIGHLIGHT_TONES.attention;
+
+    detailPanelSelection.html(`
+        <div class="poc-story-detail">
+            <div class="poc-story-detail__header" style="border-left-color: ${tone.accent}; background: ${tone.soft};">
+                <div class="poc-story-detail__eyebrow-row">
+                    <div class="poc-story-detail__eyebrow">${escapeHtml(meta.label)}</div>
+                    <div class="poc-story-detail__state">${escapeHtml(tone.label)}</div>
+                </div>
+                <div class="poc-story-detail__title">${escapeHtml(story.title)}</div>
+                <div class="poc-story-detail__question">${escapeHtml(story.question)}</div>
+            </div>
+
+            <div class="poc-stat-grid">
+                <div class="poc-stat">
+                    <div class="poc-stat__label">Impacto</div>
+                    <div class="poc-stat__value">${escapeHtml(String(story.affected_count))}</div>
+                </div>
+                <div class="poc-stat">
+                    <div class="poc-stat__label">Percentual</div>
+                    <div class="poc-stat__value">${escapeHtml(String(story.affected_pct))}%</div>
+                </div>
+                <div class="poc-stat">
+                    <div class="poc-stat__label">Sinal</div>
+                    <div class="poc-stat__value">${escapeHtml(STORY_HIGHLIGHT_LABELS[story.highlight] || story.highlight)}</div>
+                </div>
+            </div>
+
+            <div class="poc-story-detail__tags">
+                <span class="poc-story-tag">${escapeHtml(story.id)}</span>
+                <span class="poc-story-tag is-${escapeHtml(story.highlight || "neutral")}">${escapeHtml(STORY_HIGHLIGHT_LABELS[story.highlight] || story.highlight)}</span>
+                <span class="poc-story-tag">${escapeHtml(activityName || "Atividade")}</span>
+            </div>
+
+            <div class="poc-story-detail__section">
+                <div class="poc-story-detail__section-title">Parâmetros</div>
+                <div class="poc-story-detail__chips">
+                    ${params.length ? params.map((param) => `<span class="poc-story-chip">${escapeHtml(param)}</span>`).join("") : '<span class="poc-story-chip is-muted">Sem parâmetros adicionais</span>'}
+                </div>
+            </div>
+
+            <div class="poc-story-detail__section">
+                <div class="poc-story-detail__section-title">Alunos afetados</div>
+                <div class="poc-story-detail__text">${affectedUsers.length ? `${escapeHtml(sampleUsers)}${escapeHtml(remainingUsers)}` : "Nenhum aluno listado."}</div>
+            </div>
+
+            <div class="poc-story-detail__section">
+                <div class="poc-story-detail__section-title">Regras ativas</div>
+                <div class="poc-story-detail__text">${activeRules.length ? escapeHtml(activeRules.join(", ")) : "Nenhuma regra ativa para esta atividade."}</div>
+            </div>
+        </div>
+    `);
+}
+
+function renderStoriesView({
+    chartContainer,
+    titleNode,
+    detailPanel,
+    detailPanelContainer,
+    panelTitleNode,
+    stories,
+    timeline,
+    activityName,
+    state,
+    onStateChange
+}) {
+    chartContainer.selectAll("*").remove();
+    chartContainer.selectAll("svg, .poc-empty-state, .poc-render-note, .poc-stories-shell").remove();
+
+    titleNode.text(stories.length > 0 ? `Estórias da atividade: ${activityName}` : `Sem estórias em ${activityName}`);
+    if (panelTitleNode) {
+        panelTitleNode.text("Detalhes da estória");
+    }
+
+    detailPanelContainer.style("display", "block");
+
+    if (!stories.length) {
+        renderStoryDetailPanel(detailPanel, null, timeline, activityName);
+        chartContainer
+            .append("div")
+            .attr("class", "poc-empty-state poc-stories-empty")
+            .style("padding", "24px")
+            .style("color", "#5f4a39")
+            .text("Nenhuma estória atingiu o limiar mínimo para esta atividade.");
+        return;
+    }
+
+    const groupedStories = groupStories(stories);
+    if (!state.selectedStoryId || !stories.some((story) => story.id === state.selectedStoryId)) {
+        state.selectedStoryId = stories[0].id;
+    }
+
+    const selectedStory = stories.find((story) => story.id === state.selectedStoryId) || stories[0];
+    renderStoryDetailPanel(detailPanel, selectedStory, timeline, activityName);
+
+    const shell = chartContainer.append("div").attr("class", "poc-stories-shell");
+
+    const grid = shell.append("div").attr("class", "poc-stories-grid");
+
+    const categorySections = grid
+        .selectAll("section")
+        .data(groupedStories, (d) => d.category)
+        .enter()
+        .append("section")
+        .attr("class", "poc-story-group tl-animate-in");
+
+    categorySections.each(function (group, groupIndex) {
+        const section = d3.select(this);
+        const meta = getStoryCategoryMeta(group.category);
+        const totalImpact = d3.sum(group.items, (item) => item.affected_count) || 0;
+
+        section
+            .append("div")
+            .attr("class", "poc-story-group__header")
+            .html(`
+                <div class="poc-story-group__meta">
+                    <span class="poc-story-group__icon"><i class="fa-solid fa-${escapeHtml(meta.icon)}"></i></span>
+                    <div>
+                        <div class="poc-story-group__label">${escapeHtml(meta.label)}</div>
+                        <div class="poc-story-group__subtitle">${escapeHtml(String(group.items.length))} estória(s) · ${escapeHtml(String(totalImpact))} alunos afetados</div>
+                    </div>
+                </div>
+            `);
+
+        const cardWrap = section.append("div").attr("class", "poc-story-group__cards");
+
+        const cards = cardWrap
+            .selectAll("button")
+            .data(group.items, (d) => d.id)
+            .enter()
+            .append("button")
+            .attr("type", "button")
+            .attr("class", (d) => `poc-story-card ${state.selectedStoryId === d.id ? "is-selected" : ""}`)
+            .style("animationDelay", (_, index) => `${(groupIndex + index) * 0.05}s`)
+            .on("click", (_, d) => {
+                state.selectedStoryId = d.id;
+                onStateChange();
+            });
+
+        cards.append("div").attr("class", "poc-story-card__top").html((d) => {
+            const toneLabel = STORY_HIGHLIGHT_TONES[d.highlight]?.label || STORY_HIGHLIGHT_LABELS[d.highlight] || d.highlight;
+            return `
+                <div class="poc-story-card__badge">${escapeHtml(d.id)}</div>
+                <div class="poc-story-card__state is-${escapeHtml(d.highlight || "neutral")}">${escapeHtml(toneLabel)}</div>
+            `;
+        });
+        cards.append("div").attr("class", "poc-story-card__title").text((d) => d.title);
+        cards.append("div").attr("class", "poc-story-card__question").text((d) => d.question);
+        cards.append("div").attr("class", "poc-story-card__footer").html((d) => `
+            <div class="poc-story-card__metric">
+                <span class="poc-story-card__metric-label">Impacto</span>
+                <span class="poc-story-card__metric-value">${escapeHtml(String(d.affected_count))}</span>
+            </div>
+            <div class="poc-story-card__progress-wrap">
+                <div class="poc-story-card__progress-value">${escapeHtml(String(d.affected_pct))}%</div>
+                <div class="poc-story-card__progress-track">
+                    <div class="poc-story-card__progress-fill is-${escapeHtml(d.highlight || "neutral")}" style="width: ${Math.max(0, Math.min(100, Number(d.affected_pct) || 0))}%"></div>
+                </div>
+            </div>
+        `);
+    });
+}
+
 function renderTrajectoryChart({
     chartContainer,
     tooltip,
@@ -860,11 +1095,15 @@ async function renderStudentJourneyPoC() {
     const minVolumeSlider = d3.select("#poc-min-volume");
     const minVolumeValue = d3.select("#poc-min-volume-value");
     const titleNode = d3.select("#poc-title");
+    const panelTitleNode = d3.select("#poc-panel-title");
     const detailPanel = d3.select("#poc-panel-content");
     const detailPanelContainer = d3.select("#poc-detail-panel");
     const btnAll = d3.select("#btn-all");
     const btnDrop = d3.select("#btn-drop");
+    const btnJourney = d3.select("#btn-journey");
+    const btnStories = d3.select("#btn-stories");
     const panelCloseButton = d3.select("#poc-panel-close");
+    const shell = d3.select(".poc-shell");
 
     if (
         chartContainer.empty() ||
@@ -872,10 +1111,14 @@ async function renderStudentJourneyPoC() {
         minVolumeSlider.empty() ||
         minVolumeValue.empty() ||
         titleNode.empty() ||
+        panelTitleNode.empty() ||
         detailPanel.empty() ||
         detailPanelContainer.empty() ||
         btnAll.empty() ||
-        btnDrop.empty()
+        btnDrop.empty() ||
+        btnJourney.empty() ||
+        btnStories.empty() ||
+        shell.empty()
     ) {
         console.error("POC elements not found");
         return;
@@ -908,7 +1151,9 @@ async function renderStudentJourneyPoC() {
             minVolume: 10,
             narrativeMode: "finished",
             selectedRouteKey: null,
-            viewport: null
+            viewport: null,
+            activeView: "journey",
+            selectedStoryId: null
         };
 
         let currentGroupedRoutes = [];
@@ -933,33 +1178,70 @@ async function renderStudentJourneyPoC() {
             };
         }
 
-        function refreshChart() {
+        function refreshView() {
             const activityData = getGroupedRoutesForCurrentActivity();
             currentGroupedRoutes = activityData.groupedRoutes;
+            const activityName = currentTimeline?.quiz?.name || activityData.selectedActivity.name;
+            const stories = Array.isArray(currentTimeline?.stories) ? currentTimeline.stories : [];
 
             const visibleRoutes = buildNarrativeRoutes(currentGroupedRoutes, state.narrativeMode, state.minVolume);
             if (state.selectedRouteKey && !visibleRoutes.some((route) => route.routeKey === state.selectedRouteKey)) {
                 state.selectedRouteKey = null;
             }
 
-            renderTrajectoryChart({
-                chartContainer,
-                titleNode,
-                detailPanel,
-                detailPanelContainer,
-                btnAll,
-                btnDrop,
-                groupedRoutes: currentGroupedRoutes,
-                activityName: currentTimeline?.quiz?.name || activityData.selectedActivity.name,
-                state,
-                onStateChange: refreshChart
-            });
+            if (state.activeView === "stories" && state.selectedStoryId && !stories.some((story) => story.id === state.selectedStoryId)) {
+                state.selectedStoryId = null;
+            }
 
-            const maxVolume = d3.max(currentGroupedRoutes, (routeData) => routeData.totalStudents) || 1;
-            minVolumeSlider
-                .attr("max", Math.max(10, Math.min(50, maxVolume)))
-                .property("value", state.minVolume);
-            minVolumeValue.text(state.minVolume);
+            shell.classed("is-stories", state.activeView === "stories");
+            btnJourney.classed("is-active", state.activeView === "journey");
+            btnStories.classed("is-active", state.activeView === "stories");
+
+            if (state.activeView === "stories") {
+                panelTitleNode.text("Detalhes da estória");
+                btnAll.attr("disabled", true);
+                btnDrop.attr("disabled", true);
+                minVolumeSlider.attr("disabled", true);
+                minVolumeValue.text("—");
+                renderStoriesView({
+                    chartContainer,
+                    titleNode,
+                    detailPanel,
+                    detailPanelContainer,
+                    panelTitleNode,
+                    stories,
+                    timeline: currentTimeline,
+                    activityName,
+                    state,
+                    onStateChange: refreshView
+                });
+            } else {
+                panelTitleNode.text("Detalhes da Trajetória");
+                btnAll.attr("disabled", null);
+                btnDrop.attr("disabled", null);
+
+                renderTrajectoryChart({
+                    chartContainer,
+                    titleNode,
+                    detailPanel,
+                    detailPanelContainer,
+                    btnAll,
+                    btnDrop,
+                    groupedRoutes: currentGroupedRoutes,
+                    activityName,
+                    state,
+                    onStateChange: refreshView
+                });
+
+                const maxVolume = d3.max(currentGroupedRoutes, (routeData) => routeData.totalStudents) || 1;
+                minVolumeSlider
+                    .attr("max", Math.max(10, Math.min(50, maxVolume)))
+                    .property("value", state.minVolume)
+                    .attr("disabled", null);
+                minVolumeValue.text(state.minVolume);
+            }
+
+            detailPanelContainer.style("display", "block");
             activitySelect.property("value", String(state.activityIndex));
         }
 
@@ -969,28 +1251,44 @@ async function renderStudentJourneyPoC() {
             state.narrativeMode = "finished";
             state.selectedRouteKey = null;
             state.viewport = null;
-            refreshChart();
+            state.selectedStoryId = null;
+            refreshView();
         });
 
         minVolumeSlider.on("input", function () {
             state.minVolume = Number(this.value) || 10;
             minVolumeValue.text(state.minVolume);
-            refreshChart();
+            if (state.activeView === "journey") {
+                refreshView();
+            }
         });
 
         btnAll.on("click", () => {
             state.narrativeMode = "finished";
             state.selectedRouteKey = null;
-            refreshChart();
+            state.activeView = "journey";
+            refreshView();
         });
 
         btnDrop.on("click", () => {
             state.narrativeMode = "unfinished";
             state.selectedRouteKey = null;
-            refreshChart();
+            state.activeView = "journey";
+            refreshView();
         });
 
-        refreshChart();
+        btnJourney.on("click", () => {
+            state.activeView = "journey";
+            refreshView();
+        });
+
+        btnStories.on("click", () => {
+            state.activeView = "stories";
+            state.selectedRouteKey = null;
+            refreshView();
+        });
+
+        refreshView();
     } catch (error) {
         console.error("Error rendering PoC:", error);
         chartContainer.selectAll("*").remove();

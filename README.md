@@ -3,12 +3,18 @@
 Dashboard independente criado a partir da aba de trajetória do dashboard antigo.
 Agora ele consome a API do `ws-mestrado` para buscar metadados e timelines por atividade.
 
+A interface agora inclui duas abas principais:
+
+- `Jornada`: a visualização paralela da atividade, com filtros e navegação por rotas.
+- `Estórias`: os cards agrupados por categoria com o impacto calculado pela API.
+
 ## Estrutura
 
 - `index.html`: entrada principal do dashboard.
 - `styles/main.css`: estilos da página, header e visualização.
 - `js/main.js`: bootstrap da aplicação.
 - `js/poc/studentJourneyPoc.js`: tratamento de dados e renderização da jornada.
+- `js/poc/studentJourneyPoc.js`: tratamento de dados e renderização da jornada e das estórias.
 - `js/poc/loadDashboardData.js`: cliente da API e cache das timelines.
 - `data/`: base histórica mantida no repositório, mas não usada pelo fluxo principal da PoC.
 - `js/vendor/lodash.js`: biblioteca local copiada do projeto original.

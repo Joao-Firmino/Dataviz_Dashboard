@@ -24,6 +24,11 @@
                 </div>
 
                 <div class="poc-actions">
+                    <div class="poc-view-group" role="group" aria-label="Alternar abas da visualização">
+                        <button id="btn-journey" class="poc-view-btn is-active" type="button">Jornada</button>
+                        <button id="btn-stories" class="poc-view-btn" type="button">Estórias</button>
+                    </div>
+
                     <label class="poc-control">
                         <span>Atividade</span>
                         <select id="poc-activity-select" aria-label="Selecionar atividade"></select>
@@ -48,7 +53,7 @@
 
                 <aside id="poc-detail-panel" class="poc-detail-panel" aria-label="Detalhes da trajetória">
                     <div class="poc-panel-header">
-                        <h3>Detalhes da Trajetória</h3>
+                        <h3 id="poc-panel-title">Detalhes da Trajetória</h3>
                         <button id="poc-panel-close" type="button" aria-label="Fechar painel">×</button>
                     </div>
                     <div id="poc-panel-content" class="poc-panel-content">
