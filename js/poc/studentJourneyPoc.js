@@ -383,6 +383,12 @@ const STORY_HIGHLIGHT_TONES = {
     attention: { label: "Atenção", accent: "#b46f12", soft: "rgba(180, 111, 18, 0.12)" }
 };
 
+const STORY_HIGHLIGHT_STROKES = {
+    risk: "#c44",
+    good: "#2f8f5b",
+    attention: "#c58a1a"
+};
+
 function escapeHtml(value) {
     return String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -415,6 +421,60 @@ function groupStories(stories) {
             if (bIndex === -1) return -1;
             return d3.ascending(aIndex, bIndex);
         });
+}
+
+function buildStoryRouteHighlights(stories, groupedRoutes) {
+    const routeMap = new Map(groupedRoutes.map((routeData) => [routeData.routeKey, routeData]));
+    const userToRoute = new Map();
+
+    groupedRoutes.forEach((routeData) => {
+        (routeData.students || []).forEach((userId) => {
+            userToRoute.set(String(userId), routeData.routeKey);
+        });
+    });
+
+    const highlightByRoute = new Map();
+
+    (stories || []).forEach((story) => {
+        const users = Array.isArray(story.affected_users) ? story.affected_users : [];
+        const routeKeys = new Set();
+
+        users.forEach((userId) => {
+            const routeKey = userToRoute.get(String(userId));
+            if (routeKey) {
+                routeKeys.add(routeKey);
+            }
+        });
+
+        routeKeys.forEach((routeKey) => {
+            const existing = highlightByRoute.get(routeKey) || {
+                routeKey,
+                stories: [],
+                affectedUsers: new Set(),
+                severityRank: 0,
+                highlight: "attention"
+            };
+
+            existing.stories.push(story);
+            users.forEach((userId) => existing.affectedUsers.add(String(userId)));
+            existing.severityRank = Math.max(existing.severityRank, story.highlight === "risk" ? 3 : story.highlight === "attention" ? 2 : 1);
+            existing.highlight = existing.severityRank === 3 ? "risk" : existing.severityRank === 2 ? "attention" : "good";
+            highlightByRoute.set(routeKey, existing);
+        });
+    });
+
+    return {
+        routeMap,
+        highlights: Array.from(highlightByRoute.values()).map((entry) => ({
+            ...entry,
+            routeData: routeMap.get(entry.routeKey) || null,
+            stories: entry.stories.slice().sort((a, b) => {
+                const aScore = a.highlight === "risk" ? 3 : a.highlight === "attention" ? 2 : 1;
+                const bScore = b.highlight === "risk" ? 3 : b.highlight === "attention" ? 2 : 1;
+                return d3.descending(aScore, bScore);
+            })
+        }))
+    };
 }
 
 function renderStoryDetailPanel(detailPanelSelection, story, timeline, activityName) {
@@ -486,6 +546,57 @@ function renderStoryDetailPanel(detailPanelSelection, story, timeline, activityN
             </div>
         </div>
     `);
+}
+
+function ensureNarrativeTooltip(chartContainer) {
+    let tooltip = chartContainer.select(".poc-narrative-tooltip");
+    if (!tooltip.empty()) {
+        return tooltip;
+    }
+
+    tooltip = chartContainer
+        .append("div")
+        .attr("class", "poc-narrative-tooltip")
+        .style("position", "absolute")
+        .style("pointer-events", "none")
+        .style("z-index", "5")
+        .style("display", "none")
+        .style("max-width", "280px")
+        .style("padding", "10px 12px")
+        .style("border-radius", "12px")
+        .style("background", "rgba(255, 252, 247, 0.98)")
+        .style("border", "1px solid rgba(93, 64, 55, 0.18)")
+        .style("box-shadow", "0 12px 28px rgba(80, 52, 30, 0.16)")
+        .style("color", "#3f2e22")
+        .style("font-size", "12px")
+        .style("line-height", "1.45");
+
+    return tooltip;
+}
+
+function showNarrativeTooltip(tooltip, pointer, story) {
+    if (!tooltip || !story) return;
+
+    const tone = STORY_HIGHLIGHT_TONES[story.highlight] || STORY_HIGHLIGHT_TONES.attention;
+    tooltip
+        .style("display", "block")
+        .style("left", `${(pointer?.[0] ?? 0) + 16}px`)
+        .style("top", `${(pointer?.[1] ?? 0) - 12}px`)
+        .html(`
+            <div style="display:grid; gap:6px;">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:999px; background:${tone.soft}; border:1px solid ${tone.accent}33; color:${tone.accent}; font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase;">${escapeHtml(tone.label)}</span>
+                    <span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:999px; background:#f6efe5; border:1px solid #d8c7b4; color:#5d4037; font-size:10px; font-weight:900;">${escapeHtml(story.id)}</span>
+                </div>
+                <div style="font-weight:900;">${escapeHtml(story.title)}</div>
+                <div>${escapeHtml(story.question)}</div>
+            </div>
+        `);
+}
+
+function hideNarrativeTooltip(tooltip) {
+    if (!tooltip || tooltip.empty()) return;
+    tooltip.style("display", "none");
 }
 
 function renderStoriesView({
@@ -606,11 +717,13 @@ function renderTrajectoryChart({
     btnAll,
     btnDrop,
     groupedRoutes,
+    stories,
     activityName,
     state,
     onStateChange
 }) {
     chartContainer.selectAll("svg, .poc-empty-state, .poc-render-note").remove();
+    const narrativeTooltip = ensureNarrativeTooltip(chartContainer);
 
     const routesToRender = buildNarrativeRoutes(groupedRoutes, state.narrativeMode, state.minVolume);
     const MAX_RENDER_ROUTES = 180;
@@ -685,8 +798,11 @@ function renderTrajectoryChart({
     const widthScale = d3
         .scaleLinear()
         .domain(d3.extent(routesForChart, (d) => d.totalStudents))
-        .range(denseMode ? [1.2, 4.4] : [3.2, 11])
+        .range(denseMode ? [1.0, 3.6] : [2.4, 8.5])
         .clamp(true);
+
+    const { highlights: storyHighlights } = buildStoryRouteHighlights(stories, routesForChart);
+    const highlightByRoute = new Map(storyHighlights.map((entry) => [entry.routeKey, entry]));
 
     const svg = chartContainer
         .append("svg")
@@ -786,27 +902,42 @@ function renderTrajectoryChart({
         : null;
 
     function isHighlighted(routeData) {
-        return selectedRoute ? routeData.routeKey === selectedRoute.routeKey : true;
+        if (selectedRoute) {
+            return routeData.routeKey === selectedRoute.routeKey;
+        }
+
+        return highlightByRoute.has(routeData.routeKey);
     }
 
     function getRouteColor(routeData) {
-        if (state.selectedRouteKey && !isHighlighted(routeData)) {
-            return routeHasSubmission(routeData.route) ? "#b9d6ff" : "#f2c3c3";
+        const storyHighlight = highlightByRoute.get(routeData.routeKey);
+
+        if (storyHighlight) {
+            return STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#c58a1a";
         }
 
-        return routeHasSubmission(routeData.route)
-            ? d3.interpolateRgb("#dbeafe", "#1d4ed8")(0.78)
-            : d3.interpolateRgb("#fee2e2", "#b91c1c")(0.78);
+        if (state.selectedRouteKey && !isHighlighted(routeData)) {
+            return "#d3d3d3";
+        }
+
+        return "#d3d3d3";
     }
 
     function getRouteOpacity(routeData) {
-        if (state.selectedRouteKey && !isHighlighted(routeData)) {
-            return denseMode ? 0.04 : 0.08;
+        if (highlightByRoute.has(routeData.routeKey)) {
+            return 1;
         }
 
-        return routeHasSubmission(routeData.route)
-            ? (denseMode ? 0.18 : 0.34)
-            : (denseMode ? 0.16 : 0.3);
+        return denseMode ? 0.12 : 0.16;
+    }
+
+    function getRouteStrokeWidth(routeData) {
+        const storyHighlight = highlightByRoute.get(routeData.routeKey);
+        const baseWidth = widthScale(routeData.totalStudents);
+        if (storyHighlight) {
+            return Math.max(baseWidth + 1.8, 4);
+        }
+        return Math.max(1.2, baseWidth * 0.7);
     }
 
     routeGroup.each(function (routeData) {
@@ -815,6 +946,7 @@ function renderTrajectoryChart({
         const terminalPoint = points[points.length - 1];
         const submissionIndex = routeData.route.indexOf("assignment_sub");
         const submissionPoint = submissionIndex >= 0 ? points[submissionIndex] : null;
+        const storyHighlight = highlightByRoute.get(routeData.routeKey) || null;
 
         group
             .append("path")
@@ -825,13 +957,17 @@ function renderTrajectoryChart({
             .attr("stroke-linejoin", "round")
             .attr("stroke", getRouteColor(routeData))
             .attr("opacity", getRouteOpacity(routeData))
-            .attr("stroke-width", widthScale(routeData.totalStudents))
-            .on("mouseover", () => {
-                if (!state.selectedRouteKey) {
+            .attr("stroke-width", getRouteStrokeWidth(routeData))
+            .style("filter", storyHighlight ? "drop-shadow(0 0 4px rgba(0,0,0,0.12))" : "none")
+            .on("mouseover", (event) => {
+                if (storyHighlight) {
+                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), storyHighlight.stories[0]);
+                } else if (!state.selectedRouteKey) {
                     renderDetailPanel(detailPanel, routeData, groupedRoutes, { preview: true });
                 }
             })
             .on("mouseout", () => {
+                hideNarrativeTooltip(narrativeTooltip);
                 if (state.selectedRouteKey) {
                     const selected = routesForChart.find((d) => d.routeKey === state.selectedRouteKey) || null;
                     renderDetailPanel(detailPanel, selected, groupedRoutes);
@@ -841,6 +977,13 @@ function renderTrajectoryChart({
             })
             .on("click", (event) => {
                 event.stopPropagation();
+                if (storyHighlight) {
+                    const narrativeStory = storyHighlight.stories[0];
+                    showNarrativeTooltip(narrativeTooltip, event, narrativeStory);
+                    renderDetailPanel(detailPanel, routeData, groupedRoutes, { preview: false });
+                    return;
+                }
+
                 state.selectedRouteKey = state.selectedRouteKey === routeData.routeKey ? null : routeData.routeKey;
                 onStateChange();
             });
@@ -883,6 +1026,41 @@ function renderTrajectoryChart({
                 .attr("stroke-dasharray", "4 3")
                 .attr("opacity", isHighlighted(routeData) ? 1 : 0.7)
                 .style("pointer-events", "none");
+        }
+
+        if (storyHighlight) {
+            const marker = group
+                .append("g")
+                .attr("class", "story-marker")
+                .attr("transform", `translate(${x(terminalPoint.step + 1)},${y(EVENT_LABEL[terminalPoint.event])})`)
+                .style("cursor", "pointer")
+                .on("mouseover", (event) => {
+                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), storyHighlight.stories[0]);
+                })
+                .on("mouseout", () => {
+                    hideNarrativeTooltip(narrativeTooltip);
+                })
+                .on("click", (event) => {
+                    event.stopPropagation();
+                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), storyHighlight.stories[0]);
+                    renderDetailPanel(detailPanel, routeData, groupedRoutes, { preview: false });
+                });
+
+            marker
+                .append("circle")
+                .attr("r", 11)
+                .attr("fill", "#fffdf9")
+                .attr("stroke", STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#c58a1a")
+                .attr("stroke-width", 2);
+
+            marker
+                .append("text")
+                .attr("text-anchor", "middle")
+                .attr("dy", "0.35em")
+                .attr("fill", STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#c58a1a")
+                .attr("font-size", 12)
+                .attr("font-weight", 900)
+                .text("!");
         }
     });
 
@@ -1228,6 +1406,7 @@ async function renderStudentJourneyPoC() {
                     btnAll,
                     btnDrop,
                     groupedRoutes: currentGroupedRoutes,
+                    stories,
                     activityName,
                     state,
                     onStateChange: refreshView
