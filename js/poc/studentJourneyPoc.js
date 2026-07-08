@@ -24,7 +24,7 @@ function ensureNarrativeTooltip(chartContainer) {
         .style("pointer-events", "none")
         .style("z-index", "5")
         .style("display", "none")
-        .style("max-width", "280px")
+        .style("max-width", "340px")
         .style("padding", "10px 12px")
         .style("border-radius", "12px")
         .style("background", "rgba(255, 252, 247, 0.98)")
@@ -35,12 +35,54 @@ function ensureNarrativeTooltip(chartContainer) {
         .style("line-height", "1.45");
 }
 
+function formatStoryParameterValue(rawValue) {
+    if (Array.isArray(rawValue)) {
+        return rawValue.join(", ");
+    }
+
+    if (typeof rawValue === "object" && rawValue !== null) {
+        return Object.entries(rawValue)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(" | ");
+    }
+
+    return String(rawValue);
+}
+
+function getStoryAffectedCount(story) {
+    const fromCount = Number(story?.affected_count);
+    if (Number.isFinite(fromCount)) {
+        return fromCount;
+    }
+
+    if (Array.isArray(story?.affected_users)) {
+        return story.affected_users.length;
+    }
+
+    return 0;
+}
+
+function getStoryAffectedPercentage(story, affectedCount) {
+    const rawPct = Number(story?.affected_pct);
+
+    if (Number.isFinite(rawPct)) {
+        return rawPct <= 1 ? rawPct * 100 : rawPct;
+    }
+
+    const totalStudentsInScope = Number(story?.__totalStudentsInScope);
+    if (Number.isFinite(totalStudentsInScope) && totalStudentsInScope > 0) {
+        return (affectedCount / totalStudentsInScope) * 100;
+    }
+
+    return null;
+}
+
 function showNarrativeTooltip(tooltip, pointer, story, containerNode) {
     if (!tooltip || !story) return;
 
     const containerWidth = containerNode?.clientWidth || 0;
     const containerHeight = containerNode?.clientHeight || 0;
-    const tooltipWidth = 280;
+    const tooltipWidth = 340;
     const fallbackX = (pointer?.[0] ?? 0) + 16;
     const fallbackY = (pointer?.[1] ?? 0) - 12;
     const left = containerWidth > 0
@@ -51,6 +93,26 @@ function showNarrativeTooltip(tooltip, pointer, story, containerNode) {
         : fallbackY;
 
     const tone = STORY_HIGHLIGHT_TONES[story.highlight] || STORY_HIGHLIGHT_TONES.attention;
+    const affectedCount = getStoryAffectedCount(story);
+    const affectedPct = getStoryAffectedPercentage(story, affectedCount);
+    const affectedPctLabel = Number.isFinite(affectedPct) ? `${affectedPct.toFixed(1)}%` : "--";
+    const parameterEntries = Object.entries(story?.parameters || {});
+    const parametersMarkup = parameterEntries.length
+        ? `
+            <div style="display:grid; gap:5px; margin-top:2px;">
+                <div style="font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#6d5847;">Parâmetros</div>
+                ${parameterEntries
+                    .map(([key, value]) => `
+                        <div style="display:grid; grid-template-columns:max-content minmax(0,1fr); gap:6px; align-items:start; font-size:11px;">
+                            <span style="font-weight:800; color:#6f5540;">${escapeHtml(key)}</span>
+                            <span style="color:#473528;">${escapeHtml(formatStoryParameterValue(value))}</span>
+                        </div>
+                    `)
+                    .join("")}
+            </div>
+        `
+        : "";
+
     tooltip
         .style("display", "block")
         .style("left", `${left}px`)
@@ -63,6 +125,8 @@ function showNarrativeTooltip(tooltip, pointer, story, containerNode) {
                 </div>
                 <div style="font-weight:900;">${escapeHtml(story.title)}</div>
                 <div>${escapeHtml(story.question)}</div>
+                <div style="padding:6px 8px; border-radius:8px; background:#f7f1e8; border:1px solid #e2d2bf; color:#4d3a2b;">Alunos: <strong>${escapeHtml(String(affectedCount))}</strong> (${escapeHtml(affectedPctLabel)})</div>
+                ${parametersMarkup}
             </div>
         `);
 }
@@ -323,92 +387,6 @@ function groupRoutes(userRoutes) {
     })).sort((a, b) => d3.descending(a.totalStudents, b.totalStudents));
 }
 
-function getRouteLabel(route) {
-    return route.map((step) => EVENT_LABEL[step] || step).join(" → ");
-}
-
-function buildInsights(routeData, allRoutes) {
-    const insights = [];
-    const totalStudentsInScope = d3.sum(allRoutes, (d) => d.totalStudents) || 1;
-    const participation = ((routeData.totalStudents / totalStudentsInScope) * 100).toFixed(1);
-
-    insights.push(`<strong>${participation}%</strong> dos estudantes seguem esta rota.`);
-
-    if (routeData.totalStudents === 1) {
-        insights.push("Rota <strong>única</strong>.");
-    } else if (routeData.totalStudents > 10) {
-        insights.push(`Rota <strong>frequente</strong> com ${routeData.totalStudents} estudantes.`);
-    }
-
-    if (!routeHasSubmission(routeData.route)) {
-        insights.push("Sem entrega: trajetória <strong>não finalizada</strong>.");
-    } else if (routeData.avgGrade >= 7) {
-        insights.push(`Bom desempenho: média <strong>${routeData.avgGrade.toFixed(1)}</strong>.`);
-    } else if (routeData.avgGrade < 5) {
-        insights.push(`Dificuldade: média <strong>${routeData.avgGrade.toFixed(1)}</strong>.`);
-    }
-
-    if (routeData.route.length >= 6) {
-        insights.push("A trajetória tem <strong>mais passos</strong> e tende a ser mais longa.");
-    }
-
-    return insights.slice(0, 3);
-}
-
-function renderDetailPanel(detailPanelSelection, routeData, allRoutes, options = {}) {
-    const previewLabel = options.preview ? "Prévia da rota" : "Detalhes da trajetória";
-
-    if (!routeData) {
-        detailPanelSelection.html(`
-            <div class="poc-detail-empty">
-                <div class="poc-detail-empty__lead">${svgIconMarkup("forum_vis", "")}Passe o mouse ou clique em uma rota</div>
-                <div class="poc-detail-empty__hint">Os ícones, a leitura da trajetória e os destaques ficam aqui. Use as duas visões para alternar entre trajetórias finalizadas e não finalizadas.</div>
-            </div>
-        `);
-        return;
-    }
-
-    const routeLabel = getRouteLabel(routeData.route);
-    const insights = buildInsights(routeData, allRoutes);
-    const stepsMarkup = routeData.route.map((step) => getEventChipMarkup(step)).join("");
-    const studentsPreview = routeData.students.slice(0, 6).join(", ");
-    const moreStudents = routeData.students.length > 6 ? ` +${routeData.students.length - 6}` : "";
-
-    const html = `
-        <div class="poc-route-detail">
-            <div class="poc-route-header">
-                ${getStatusMarkup(routeHasSubmission(routeData.route))}
-                <div class="poc-route-title">${previewLabel}: ${routeLabel}</div>
-            </div>
-
-            <div class="poc-stat-grid">
-                <div class="poc-stat">
-                    <div class="poc-stat__label">Estudantes</div>
-                    <div class="poc-stat__value">${routeData.totalStudents}</div>
-                </div>
-                <div class="poc-stat">
-                    <div class="poc-stat__label">Média</div>
-                    <div class="poc-stat__value">${routeData.avgGrade.toFixed(2)}</div>
-                </div>
-                <div class="poc-stat">
-                    <div class="poc-stat__label">Passos</div>
-                    <div class="poc-stat__value">${routeData.route.length}</div>
-                </div>
-            </div>
-
-            <div class="poc-step-list">${stepsMarkup}</div>
-
-            <div class="poc-insight-list">
-                ${insights.map((insight) => `<div class="poc-insight">${insight}</div>`).join("")}
-            </div>
-
-            <div class="poc-insight">Amostra: ${studentsPreview}${moreStudents}</div>
-        </div>
-    `;
-
-    detailPanelSelection.html(html);
-}
-
 function buildNarrativeRoutes(groupedRoutes, narrativeMode, minVolume) {
     const volumeFiltered = groupedRoutes.filter((routeData) => routeData.totalStudents >= minVolume);
 
@@ -484,6 +462,79 @@ function groupStories(stories) {
         });
 }
 
+function renderStoryMenuPanel(detailPanelSelection, stories, selectedStoryId, onStorySelect) {
+    const grouped = groupStories(stories || []);
+
+    if (!grouped.length) {
+        detailPanelSelection.html(`
+            <div class="poc-story-nav">
+                <p class="poc-story-nav__empty">Nenhuma estoria foi retornada para esta atividade.</p>
+            </div>
+        `);
+        return;
+    }
+
+    const html = `
+        <div class="poc-story-nav">
+            <div class="poc-story-list-scroll">
+                ${grouped
+                    .map(({ category, items }) => {
+                        const categoryMeta = getStoryCategoryMeta(category);
+                        return `
+                            <section class="poc-story-group" data-category="${escapeHtml(category)}">
+                                <div class="poc-story-group__title">
+                                    <span>${escapeHtml(categoryMeta.label)}</span>
+                                    <span class="poc-story-group__count">${items.length}</span>
+                                </div>
+                                <div class="poc-story-list">
+                                    ${items.map((story) => {
+                                        const isActive = selectedStoryId && String(story.id) === String(selectedStoryId);
+                                        const affectedCount = getStoryAffectedCount(story);
+                                        return `
+                                            <button
+                                                type="button"
+                                                class="poc-story-item ${isActive ? "is-active" : ""}"
+                                                data-story-id="${escapeHtml(String(story.id))}"
+                                                title="${escapeHtml(story.title || "Estoria")}">
+                                                <div class="poc-story-item__meta">
+                                                    <span class="poc-story-item__id">${escapeHtml(String(story.id || "S"))}</span>
+                                                    <span class="poc-story-item__badge">${escapeHtml(String(affectedCount))}</span>
+                                                </div>
+                                                <div class="poc-story-item__title">${escapeHtml(story.title || "Sem titulo")}</div>
+                                            </button>
+                                        `;
+                                    }).join("")}
+                                </div>
+                            </section>
+                        `;
+                    })
+                    .join("")}
+            </div>
+        </div>
+    `;
+
+    detailPanelSelection.html(html);
+    detailPanelSelection.selectAll(".poc-story-item").on("click", function (event) {
+        event.preventDefault();
+        const storyId = this.getAttribute("data-story-id");
+        if (storyId) {
+            onStorySelect(storyId);
+        }
+    });
+
+    if (selectedStoryId) {
+        const activeCard = detailPanelSelection
+            .selectAll(".poc-story-item")
+            .filter(function () {
+                return this.getAttribute("data-story-id") === String(selectedStoryId);
+            })
+            .node();
+        if (activeCard && typeof activeCard.scrollIntoView === "function") {
+            activeCard.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+        }
+    }
+}
+
 function buildStoryRouteHighlights(stories, groupedRoutes) {
     const routeMap = new Map(groupedRoutes.map((routeData) => [routeData.routeKey, routeData]));
     const userToRoute = new Map();
@@ -556,14 +607,48 @@ function renderTrajectoryChart({
     const narrativeTooltip = ensureNarrativeTooltip(chartContainer);
 
     const routesToRender = buildNarrativeRoutes(groupedRoutes, state.narrativeMode, state.minVolume);
+    const totalStudentsInScope = d3.sum(groupedRoutes, (entry) => entry.totalStudents) || 1;
     const MAX_RENDER_ROUTES = 180;
     const routesForChart = routesToRender.slice(0, MAX_RENDER_ROUTES);
     const hiddenRoutesCount = Math.max(0, routesToRender.length - routesForChart.length);
     const allVisibleKeys = new Set(routesForChart.map((d) => d.routeKey));
 
+    const { highlights: storyHighlights } = buildStoryRouteHighlights(stories, routesToRender);
+    const highlightByRoute = new Map(storyHighlights.map((entry) => [entry.routeKey, entry]));
+    const storyIdToRouteKey = new Map();
+
+    storyHighlights.forEach((entry) => {
+        const routeSize = entry.routeData?.totalStudents || 0;
+        (entry.stories || []).forEach((story) => {
+            const storyId = String(story.id);
+            const current = storyIdToRouteKey.get(storyId);
+            if (!current || routeSize > current.routeSize) {
+                storyIdToRouteKey.set(storyId, { routeKey: entry.routeKey, routeSize });
+            }
+        });
+    });
+
+    if (state.selectedStoryId) {
+        const selectedStoryRoute = storyIdToRouteKey.get(String(state.selectedStoryId));
+        state.selectedRouteKey = selectedStoryRoute ? selectedStoryRoute.routeKey : null;
+    }
+
     if (state.selectedRouteKey && !allVisibleKeys.has(state.selectedRouteKey)) {
         state.selectedRouteKey = null;
     }
+
+    renderStoryMenuPanel(detailPanel, stories, state.selectedStoryId, (storyId) => {
+        if (String(state.selectedStoryId) === String(storyId)) {
+            state.selectedStoryId = null;
+            state.selectedRouteKey = null;
+        } else {
+            state.selectedStoryId = String(storyId);
+            state.selectedRouteKey = storyIdToRouteKey.get(String(storyId))?.routeKey || null;
+        }
+
+        onStateChange();
+    });
+    detailPanelContainer.style("display", "block");
 
     const totalRoutes = routesToRender.length;
     const modeLabel = state.narrativeMode === "unfinished"
@@ -579,9 +664,6 @@ function renderTrajectoryChart({
     btnDrop.classed("is-active", state.narrativeMode === "unfinished");
 
     if (totalRoutes === 0) {
-        renderDetailPanel(detailPanel, null, groupedRoutes);
-        detailPanelContainer.style("display", "block");
-
         chartContainer
             .append("div")
             .attr("class", "poc-empty-state")
@@ -598,41 +680,19 @@ function renderTrajectoryChart({
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
     const maxSteps = d3.max(groupedRoutes, (d) => d.route.length) || 1;
-    const minVisibleSteps = Math.min(2, maxSteps);
-
-    if (!state.viewport) {
-        const initialEnd = Math.min(maxSteps, 5);
-        state.viewport = { start: 1, end: initialEnd };
-    }
-
-    const clampedStart = Math.max(1, Math.min(maxSteps, Math.round(state.viewport.start || 1)));
-    const clampedEnd = Math.max(clampedStart, Math.min(maxSteps, Math.round(state.viewport.end || maxSteps)));
-    const span = clampedEnd - clampedStart + 1;
-
-    if (span < minVisibleSteps) {
-        state.viewport.start = Math.max(1, clampedEnd - minVisibleSteps + 1);
-        state.viewport.end = Math.min(maxSteps, state.viewport.start + minVisibleSteps - 1);
-    } else {
-        state.viewport.start = clampedStart;
-        state.viewport.end = clampedEnd;
-    }
-
-    const visibleSteps = d3.range(state.viewport.start, state.viewport.end + 1);
-    const stepStride = Math.max(1, Math.ceil(visibleSteps.length / 12));
-    const xTicks = visibleSteps.filter((step, index) => index % stepStride === 0 || step === state.viewport.end);
+    const allSteps = d3.range(1, maxSteps + 1);
+    const stepStride = Math.max(1, Math.ceil(allSteps.length / 12));
+    const xTicks = allSteps.filter((step, index) => index % stepStride === 0 || step === maxSteps);
     const yDomain = EVENT_ORDER.map((eventName) => EVENT_LABEL[eventName]);
     const denseMode = routesForChart.length > 120;
 
-    const x = d3.scaleLinear().domain([state.viewport.start, state.viewport.end]).range([0, innerWidth]);
+    const x = d3.scaleLinear().domain([1, maxSteps]).range([0, innerWidth]);
     const y = d3.scalePoint().domain(yDomain).range([innerHeight, 0]).padding(0.5);
     const widthScale = d3
         .scaleLinear()
         .domain(d3.extent(routesForChart, (d) => d.totalStudents))
         .range(denseMode ? [1.0, 3.6] : [2.4, 8.5])
         .clamp(true);
-
-    const { highlights: storyHighlights } = buildStoryRouteHighlights(stories, routesForChart);
-    const highlightByRoute = new Map(storyHighlights.map((entry) => [entry.routeKey, entry]));
 
     const svg = chartContainer
         .append("svg")
@@ -644,13 +704,32 @@ function renderTrajectoryChart({
 
     const root = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
+    const rowStep = y.step ? y.step() : (innerHeight / Math.max(1, yDomain.length));
+    const rowHeight = Math.max(24, rowStep);
+    const yDomainTopDown = yDomain
+        .slice()
+        .sort((a, b) => d3.ascending(y(a) ?? 0, y(b) ?? 0));
+
+    root
+        .append("g")
+        .attr("class", "poc-row-stripes")
+        .attr("pointer-events", "none")
+        .selectAll("rect")
+        .data(yDomainTopDown)
+        .join("rect")
+        .attr("x", 0)
+        .attr("y", (eventLabel) => Math.max(0, (y(eventLabel) ?? 0) - (rowHeight / 2)))
+        .attr("width", innerWidth)
+        .attr("height", rowHeight)
+        .attr("fill", (_, index) => (index % 2 === 0 ? "rgba(184, 134, 11, 0.05)" : "transparent"));
+
     root
         .append("g")
         .attr("class", "x-grid")
         .attr("transform", `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(x).tickValues(xTicks).tickSize(-innerHeight).tickFormat(""))
+        .call(d3.axisBottom(x).tickValues(xTicks).tickSize(0).tickFormat(""))
         .call((axis) => axis.select(".domain").remove())
-        .call((axis) => axis.selectAll("line").attr("stroke", "#e9e2d8").attr("stroke-dasharray", "3 5"));
+        .call((axis) => axis.selectAll("line").remove());
 
     root
         .append("g")
@@ -730,9 +809,18 @@ function renderTrajectoryChart({
     const selectedRoute = state.selectedRouteKey
         ? routesForChart.find((d) => d.routeKey === state.selectedRouteKey) || null
         : null;
+    const selectedStoryRouteKeys = new Set(
+        storyHighlights
+            .filter((entry) => (entry.stories || []).some((story) => String(story.id) === String(state.selectedStoryId || "")))
+            .map((entry) => entry.routeKey)
+    );
     let hoveredRouteKey = null;
 
     function isHighlighted(routeData) {
+        if (state.selectedStoryId) {
+            return selectedStoryRouteKeys.has(routeData.routeKey);
+        }
+
         if (hoveredRouteKey && !state.selectedRouteKey) {
             return routeData.routeKey === hoveredRouteKey;
         }
@@ -751,6 +839,16 @@ function renderTrajectoryChart({
     function getRouteColor(routeData) {
         const storyHighlight = highlightByRoute.get(routeData.routeKey);
 
+        if (state.selectedStoryId) {
+            if (selectedStoryRouteKeys.has(routeData.routeKey)) {
+                return storyHighlight
+                    ? (STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#c58a1a")
+                    : "#304a74";
+            }
+
+            return "#b58d66";
+        }
+
         if (isPinnedRoute(routeData)) {
             return storyHighlight
                 ? (STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#c58a1a")
@@ -758,7 +856,7 @@ function renderTrajectoryChart({
         }
 
         if (state.selectedRouteKey) {
-            return "#d7cec3";
+            return "#b58d66";
         }
 
         if (hoveredRouteKey && routeData.routeKey === hoveredRouteKey) {
@@ -771,20 +869,24 @@ function renderTrajectoryChart({
             return STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#c58a1a";
         }
 
-        return "#d3d3d3";
+        return "#b58d66";
     }
 
     function getRouteOpacity(routeData) {
+        if (state.selectedStoryId) {
+            return selectedStoryRouteKeys.has(routeData.routeKey) ? 0.98 : (denseMode ? 0.15 : 0.2);
+        }
+
         if (isPinnedRoute(routeData)) {
             return 1;
         }
 
         if (state.selectedRouteKey) {
-            return denseMode ? 0.04 : 0.06;
+            return denseMode ? 0.15 : 0.2;
         }
 
         if (hoveredRouteKey) {
-            return routeData.routeKey === hoveredRouteKey ? 0.95 : (denseMode ? 0.08 : 0.12);
+            return routeData.routeKey === hoveredRouteKey ? 0.95 : (denseMode ? 0.15 : 0.2);
         }
 
         if (highlightByRoute.has(routeData.routeKey)) {
@@ -797,6 +899,10 @@ function renderTrajectoryChart({
     function getRouteStrokeWidth(routeData) {
         const storyHighlight = highlightByRoute.get(routeData.routeKey);
         const baseWidth = widthScale(routeData.totalStudents);
+
+        if (state.selectedStoryId && selectedStoryRouteKeys.has(routeData.routeKey)) {
+            return Math.max(baseWidth + 1.6, 4.2);
+        }
 
         if (isPinnedRoute(routeData)) {
             return Math.max(baseWidth + 2.4, 4.8);
@@ -833,6 +939,10 @@ function renderTrajectoryChart({
                 .style("opacity", Math.min(1, routeOpacity + 0.22));
 
             group
+                .selectAll(".route-dot-bg")
+                .style("opacity", Math.min(1, routeOpacity + 0.26));
+
+            group
                 .select(".route-terminal")
                 .attr("opacity", isHighlighted(routeData) ? 1 : Math.max(0.3, routeOpacity + 0.08));
 
@@ -845,6 +955,27 @@ function renderTrajectoryChart({
     let selectedStoryForPinned = null;
     let selectedStoryPointer = null;
 
+    function getStoryMarkerPosition(points) {
+        const dx = 15;
+        const dy = -15;
+
+        if (points.length >= 2) {
+            const prev = points[points.length - 2];
+            const curr = points[points.length - 1];
+
+            return {
+                x: ((x(prev.step + 1) + x(curr.step + 1)) / 2) + dx,
+                y: ((y(EVENT_LABEL[prev.event]) + y(EVENT_LABEL[curr.event])) / 2) + dy
+            };
+        }
+
+        const only = points[0];
+        return {
+            x: x(only.step + 1) + dx,
+            y: y(EVENT_LABEL[only.event]) + dy
+        };
+    }
+
     routeGroup.each(function (routeData) {
         const group = d3.select(this);
         const points = routeData.route.map((eventName, step) => ({ event: eventName, step }));
@@ -852,6 +983,13 @@ function renderTrajectoryChart({
         const submissionIndex = routeData.route.indexOf("assignment_sub");
         const submissionPoint = submissionIndex >= 0 ? points[submissionIndex] : null;
         const storyHighlight = highlightByRoute.get(routeData.routeKey) || null;
+        const activeStory = storyHighlight
+            ? ((storyHighlight.stories || []).find((story) => String(story.id) === String(state.selectedStoryId || "")) || storyHighlight.stories[0])
+            : null;
+        const activeStoryWithMetrics = activeStory
+            ? { ...activeStory, __totalStudentsInScope: totalStudentsInScope }
+            : null;
+        const storyMarkerPosition = getStoryMarkerPosition(points);
 
         group
             .append("path")
@@ -868,10 +1006,8 @@ function renderTrajectoryChart({
                 hoveredRouteKey = routeData.routeKey;
                 applyRouteVisualState();
 
-                if (storyHighlight) {
-                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), storyHighlight.stories[0], chartContainer.node());
-                } else if (!state.selectedRouteKey) {
-                    renderDetailPanel(detailPanel, routeData, groupedRoutes, { preview: true });
+                if (storyHighlight && activeStoryWithMetrics) {
+                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node());
                 }
             })
             .on("mouseout", () => {
@@ -881,20 +1017,28 @@ function renderTrajectoryChart({
                 if (!isPinnedRoute(routeData)) {
                     hideNarrativeTooltip(narrativeTooltip);
                 }
-
-                if (state.selectedRouteKey) {
-                    const selected = routesForChart.find((d) => d.routeKey === state.selectedRouteKey) || null;
-                    renderDetailPanel(detailPanel, selected, groupedRoutes);
-                } else {
-                    renderDetailPanel(detailPanel, null, groupedRoutes);
-                }
             })
             .on("click", (event) => {
                 event.stopPropagation();
 
                 state.selectedRouteKey = state.selectedRouteKey === routeData.routeKey ? null : routeData.routeKey;
+                state.selectedStoryId = state.selectedRouteKey && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
                 onStateChange();
             });
+
+        group
+            .selectAll(".route-dot-bg")
+            .data(points)
+            .join("circle")
+            .attr("class", "route-dot-bg")
+            .attr("cx", (d) => x(d.step + 1))
+            .attr("cy", (d) => y(EVENT_LABEL[d.event]))
+            .attr("r", 12)
+            .attr("fill", "#ffffff")
+            .attr("stroke", (d) => EVENT_COLOR[d.event] || "#cbd5e1")
+            .attr("stroke-width", 2.8)
+            .style("pointer-events", "none")
+            .style("opacity", Math.min(1, getRouteOpacity(routeData) + 0.26));
 
         group
             .selectAll(".route-dot")
@@ -940,12 +1084,14 @@ function renderTrajectoryChart({
             const marker = group
                 .append("g")
                 .attr("class", "story-marker")
-                .attr("transform", `translate(${x(terminalPoint.step + 1)},${y(EVENT_LABEL[terminalPoint.event])})`)
+                .attr("transform", `translate(${storyMarkerPosition.x},${storyMarkerPosition.y})`)
                 .style("cursor", "pointer")
                 .on("mouseover", (event) => {
                     hoveredRouteKey = routeData.routeKey;
                     applyRouteVisualState();
-                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), storyHighlight.stories[0], chartContainer.node());
+                    if (activeStoryWithMetrics) {
+                        showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node());
+                    }
                 })
                 .on("mouseout", () => {
                     hoveredRouteKey = null;
@@ -958,6 +1104,7 @@ function renderTrajectoryChart({
                 .on("click", (event) => {
                     event.stopPropagation();
                     state.selectedRouteKey = state.selectedRouteKey === routeData.routeKey ? null : routeData.routeKey;
+                    state.selectedStoryId = state.selectedRouteKey && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
                     onStateChange();
                 });
 
@@ -978,11 +1125,11 @@ function renderTrajectoryChart({
                 .text("!");
         }
 
-        if (isPinnedRoute(routeData) && storyHighlight) {
-            selectedStoryForPinned = storyHighlight.stories[0] || null;
+        if (isPinnedRoute(routeData) && storyHighlight && activeStoryWithMetrics) {
+            selectedStoryForPinned = activeStoryWithMetrics;
             selectedStoryPointer = [
-                x(terminalPoint.step + 1),
-                y(EVENT_LABEL[terminalPoint.event])
+                storyMarkerPosition.x,
+                storyMarkerPosition.y
             ];
         }
     });
@@ -995,207 +1142,22 @@ function renderTrajectoryChart({
         hideNarrativeTooltip(narrativeTooltip);
     }
 
-    const navigatorHeight = 20;
-    const navigatorY = innerHeight + 24;
-    const stepLoad = Array.from({ length: maxSteps }, () => 0);
-
-    routesForChart.forEach((routeData) => {
-        routeData.route.forEach((_, index) => {
-            if (stepLoad[index] !== undefined) {
-                stepLoad[index] += routeData.totalStudents;
-            }
-        });
-    });
-
     if (hiddenRoutesCount > 0) {
-        renderDetailPanel(
-            detailPanel,
-            selectedRoute,
-            groupedRoutes,
-            { preview: false }
-        );
+        chartContainer
+            .append("div")
+            .attr("class", "poc-render-note")
+            .style("position", "absolute")
+            .style("left", "12px")
+            .style("bottom", "10px")
+            .style("padding", "4px 8px")
+            .style("border-radius", "999px")
+            .style("font-size", "11px")
+            .style("font-weight", "700")
+            .style("background", "rgba(255, 248, 236, 0.94)")
+            .style("border", "1px solid #d9c6b0")
+            .style("color", "#6d5440")
+            .text(`Mostrando ${routesForChart.length} de ${routesToRender.length} rotas.`);
     }
-
-    let lastStepWithData = 0;
-    for (let i = stepLoad.length - 1; i >= 0; i--) {
-        if (stepLoad[i] > 0) {
-            lastStepWithData = i + 1;
-            break;
-        }
-    }
-    const effectiveMaxSteps = lastStepWithData > 0 ? lastStepWithData : maxSteps;
-
-    const xNavigator = d3.scaleLinear().domain([1, effectiveMaxSteps]).range([0, innerWidth]);
-    const maxLoad = d3.max(stepLoad) || 1;
-    const yNavigator = d3
-        .scaleLinear()
-        .domain([0, maxLoad])
-        .range([navigatorHeight, 0]);
-    const navigatorArea = d3
-        .area()
-        .x((_, index) => xNavigator(index + 1))
-        .y0(navigatorHeight)
-        .y1((value) => yNavigator(value))
-        .curve(d3.curveMonotoneX);
-    const navigatorLine = d3
-        .line()
-        .x((_, index) => xNavigator(index + 1))
-        .y((value) => yNavigator(value))
-        .curve(d3.curveMonotoneX);
-
-    const navigator = root
-        .append("g")
-        .attr("class", "poc-navigator")
-        .attr("transform", `translate(0,${navigatorY})`);
-
-    const navigatorClipId = `poc-navigator-clip-${Math.random().toString(36).slice(2, 10)}`;
-
-    navigator
-        .append("defs")
-        .append("clipPath")
-        .attr("id", navigatorClipId)
-        .append("rect")
-        .attr("x", 0)
-        .attr("y", 0)
-        .attr("width", innerWidth)
-        .attr("height", navigatorHeight)
-        .attr("rx", 7)
-        .attr("ry", 7);
-
-    navigator
-        .append("rect")
-        .attr("class", "poc-navigator-frame")
-        .attr("x", 0)
-        .attr("y", -10)
-        .attr("width", innerWidth)
-        .attr("height", navigatorHeight + 16)
-        .attr("rx", 8)
-        .attr("ry", 8)
-        .attr("fill", "#f6f0e8")
-        .attr("stroke", "#ddd1c2")
-        .attr("stroke-width", 1);
-
-    navigator
-        .append("rect")
-        .attr("class", "poc-navigator-track")
-        .attr("width", innerWidth)
-        .attr("height", navigatorHeight)
-        .attr("rx", 7)
-        .attr("ry", 7)
-        .attr("fill", "#fcf8f1")
-        .attr("stroke", "#e3d8ca")
-        .attr("stroke-width", 1);
-
-    const miniBarWidth = Math.max(2, (innerWidth / Math.max(effectiveMaxSteps, 1)) * 0.72);
-
-    navigator
-        .append("g")
-        .attr("class", "poc-navigator-mini-bars")
-        .attr("clip-path", `url(#${navigatorClipId})`)
-        .selectAll("rect")
-        .data(stepLoad)
-        .enter()
-        .append("rect")
-        .attr("class", "poc-navigator-mini-bar")
-        .attr("x", (_, index) => xNavigator(index + 1) - miniBarWidth / 2)
-        .attr("y", (value) => yNavigator(value))
-        .attr("width", miniBarWidth)
-        .attr("height", (value) => Math.max(1, navigatorHeight - yNavigator(value)))
-        .attr("rx", 1.5)
-        .attr("ry", 1.5);
-
-    navigator
-        .append("path")
-        .datum(stepLoad)
-        .attr("class", "poc-navigator-overview")
-        .attr("clip-path", `url(#${navigatorClipId})`)
-        .attr("d", navigatorArea);
-
-    navigator
-        .append("path")
-        .datum(stepLoad)
-        .attr("class", "poc-navigator-overview-line")
-        .attr("clip-path", `url(#${navigatorClipId})`)
-        .attr("d", navigatorLine);
-
-    function getViewportFromSelection(selection) {
-        if (!selection) {
-            return { start: 1, end: effectiveMaxSteps };
-        }
-
-        const [x0, x1] = selection;
-        let nextStart = Math.max(1, Math.round(xNavigator.invert(x0)));
-        let nextEnd = Math.min(effectiveMaxSteps, Math.round(xNavigator.invert(x1)));
-
-        if ((nextEnd - nextStart + 1) < minVisibleSteps) {
-            nextEnd = Math.min(effectiveMaxSteps, nextStart + minVisibleSteps - 1);
-            nextStart = Math.max(1, nextEnd - minVisibleSteps + 1);
-        }
-
-        return { start: nextStart, end: nextEnd };
-    }
-
-    function toSelectionPixels(viewport) {
-        return [xNavigator(viewport.start), xNavigator(viewport.end)];
-    }
-
-    const brush = d3
-        .brushX()
-        .extent([[0, 0], [innerWidth, navigatorHeight]])
-        .handleSize(14)
-        .on("end", (event) => {
-            if (!event.sourceEvent) {
-                return;
-            }
-
-            const nextViewport = getViewportFromSelection(event.selection);
-            const snappedSelection = toSelectionPixels(nextViewport);
-            const selectionChanged = !event.selection
-                || Math.abs(event.selection[0] - snappedSelection[0]) > 0.5
-                || Math.abs(event.selection[1] - snappedSelection[1]) > 0.5;
-
-            if (selectionChanged) {
-                brushGroup.call(brush.move, snappedSelection);
-            }
-
-            const hasChanged = nextViewport.start !== state.viewport.start || nextViewport.end !== state.viewport.end;
-            if (!hasChanged) {
-                return;
-            }
-
-            state.viewport = nextViewport;
-            onStateChange();
-        });
-
-    const brushGroup = navigator
-        .append("g")
-        .attr("class", "poc-navigator-brush")
-        .call(brush);
-
-    brushGroup.call(brush.move, [xNavigator(state.viewport.start), xNavigator(state.viewport.end)]);
-
-    brushGroup
-        .selectAll(".overlay")
-        .attr("fill", "#000")
-        .attr("fill-opacity", 0.001)
-        .attr("pointer-events", "all");
-
-    brushGroup
-        .selectAll(".selection")
-        .attr("fill", "none")
-        .attr("stroke", "#5b86c5")
-        .attr("stroke-width", 2)
-        .attr("rx", 6)
-        .attr("ry", 6);
-
-    brushGroup
-        .selectAll(".handle")
-        .attr("fill", "#5b86c5")
-        .attr("stroke", "#ffffff")
-        .attr("stroke-width", 2);
-
-    renderDetailPanel(detailPanel, selectedRoute, groupedRoutes);
-    detailPanelContainer.style("display", "block");
 }
 
 async function renderStudentJourneyPoC() {
@@ -1208,7 +1170,6 @@ async function renderStudentJourneyPoC() {
     const detailPanelContainer = d3.select("#poc-detail-panel");
     const btnAll = d3.select("#btn-all");
     const btnDrop = d3.select("#btn-drop");
-    const panelCloseButton = d3.select("#poc-panel-close");
 
     if (
         chartContainer.empty() ||
@@ -1223,12 +1184,6 @@ async function renderStudentJourneyPoC() {
     ) {
         console.error("POC elements not found");
         return;
-    }
-
-    if (!panelCloseButton.empty()) {
-        panelCloseButton.on("click", () => {
-            detailPanelContainer.style("display", "none");
-        });
     }
 
     try {
@@ -1252,7 +1207,7 @@ async function renderStudentJourneyPoC() {
             minVolume: 10,
             narrativeMode: "finished",
             selectedRouteKey: null,
-            viewport: null,
+            selectedStoryId: null,
         };
 
         let currentGroupedRoutes = [];
@@ -1320,7 +1275,7 @@ async function renderStudentJourneyPoC() {
             state.minVolume = 10;
             state.narrativeMode = "finished";
             state.selectedRouteKey = null;
-            state.viewport = null;
+            state.selectedStoryId = null;
             refreshView();
         });
 
@@ -1333,12 +1288,14 @@ async function renderStudentJourneyPoC() {
         btnAll.on("click", () => {
             state.narrativeMode = "finished";
             state.selectedRouteKey = null;
+            state.selectedStoryId = null;
             refreshView();
         });
 
         btnDrop.on("click", () => {
             state.narrativeMode = "unfinished";
             state.selectedRouteKey = null;
+            state.selectedStoryId = null;
             refreshView();
         });
 

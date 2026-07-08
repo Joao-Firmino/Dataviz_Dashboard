@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dataviz Dashboard - Jornada do Estudante</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="./styles/main.css?v=20260706220549">
+    <link rel="stylesheet" href="./styles/main.css?v=20260708120000">
 </head>
 <body>
     <header class="app-header">
@@ -46,13 +46,15 @@
                     <div id="poc-dashboard-container" class="poc-dashboard-container"></div>
                 </div>
 
-                <aside id="poc-detail-panel" class="poc-detail-panel" aria-label="Detalhes da trajetória">
+                <aside id="poc-detail-panel" class="poc-detail-panel" aria-label="Menu de estórias">
                     <div class="poc-panel-header">
-                        <h3 id="poc-panel-title">Detalhes da Trajetória</h3>
-                        <button id="poc-panel-close" type="button" aria-label="Fechar painel">×</button>
+                        <h3 id="poc-panel-title">
+                            <span class="poc-panel-title-marker" aria-hidden="true">!</span>
+                            <span>Estórias da atividade</span>
+                        </h3>
                     </div>
                     <div id="poc-panel-content" class="poc-panel-content">
-                        <p style="color: #999;">Clique em uma rota para ver detalhes</p>
+                        <p style="color: #999;">Carregando estórias...</p>
                     </div>
                 </aside>
             </div>
@@ -61,6 +63,6 @@
 
     <script src="./js/vendor/d3.v6.min.js"></script>
     <script src="./js/vendor/lodash.js"></script>
-    <script src="./js/main.js?v=20260706220549" type="module"></script>
+    <script src="./js/main.js?v=20260708120000" type="module"></script>
 </body>
 </html>
