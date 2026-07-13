@@ -22,6 +22,9 @@ html {
 body {
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     color: var(--text-main);
     background:
@@ -84,13 +87,19 @@ input {
     margin: 0 auto;
     padding: 10px 0 12px;
     height: calc(100vh - 92px);
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
     min-height: 0;
+    overflow: hidden;
 }
 
 .poc-shell {
     height: 100%;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
     padding: 12px;
     border-radius: 18px;
     background: radial-gradient(circle at 10% 10%, #fffaf1 0%, #f3ece2 45%, #ebe2d6 100%);
@@ -227,12 +236,14 @@ input {
 
 .poc-main-content {
     display: flex;
+    flex-direction: row;
     gap: 12px;
     margin-top: 8px;
     height: calc(100vh - 150px);
-    align-items: start;
+    align-items: stretch;
     flex: 1 1 auto;
     min-height: 0;
+    overflow: hidden;
 }
 
 .poc-chart-area {
@@ -282,14 +293,14 @@ input {
 }
 
 .poc-detail-panel {
-    flex: 0 0 260px;
+    flex: 0 0 320px;
+    width: 320px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(80, 52, 30, 0.06);
     min-height: 0;
     height: 100%;
-    max-height: calc(100vh - 190px);
 }
 
 .poc-panel-header {
@@ -354,7 +365,6 @@ input {
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    max-height: calc(100vh - 240px);
     overflow: hidden;
     padding: 12px;
     font-size: 12px;
@@ -680,6 +690,10 @@ input {
 
 .poc-navigator-overview {
     shape-rendering: geometricPrecision;
+}
+
+.poc-narrative-tooltip {
+    pointer-events: none;
 }
 
 @media (max-width: 860px) {

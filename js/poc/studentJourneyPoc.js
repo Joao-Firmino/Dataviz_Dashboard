@@ -612,6 +612,7 @@ function renderTrajectoryChart({
     const routesForChart = routesToRender.slice(0, MAX_RENDER_ROUTES);
     const hiddenRoutesCount = Math.max(0, routesToRender.length - routesForChart.length);
     const allVisibleKeys = new Set(routesForChart.map((d) => d.routeKey));
+    const routeKeyToIndex = new Map(routesForChart.map((routeData, routeIndex) => [routeData.routeKey, routeIndex]));
 
     const { highlights: storyHighlights } = buildStoryRouteHighlights(stories, routesToRender);
     const highlightByRoute = new Map(storyHighlights.map((entry) => [entry.routeKey, entry]));
@@ -628,22 +629,50 @@ function renderTrajectoryChart({
         });
     });
 
-    if (state.selectedStoryId) {
+    if (state.selectedStoryId && !state.selectedRouteKey) {
         const selectedStoryRoute = storyIdToRouteKey.get(String(state.selectedStoryId));
         state.selectedRouteKey = selectedStoryRoute ? selectedStoryRoute.routeKey : null;
+        state.selectedRouteIndex = state.selectedRouteKey && routeKeyToIndex.has(state.selectedRouteKey)
+            ? routeKeyToIndex.get(state.selectedRouteKey)
+            : null;
     }
 
     if (state.selectedRouteKey && !allVisibleKeys.has(state.selectedRouteKey)) {
         state.selectedRouteKey = null;
+        state.selectedRouteIndex = null;
+        state.pinnedCoords = null;
+    }
+
+    if (state.selectedRouteIndex == null && state.selectedRouteKey && routeKeyToIndex.has(state.selectedRouteKey)) {
+        state.selectedRouteIndex = routeKeyToIndex.get(state.selectedRouteKey);
+    }
+
+    if (state.selectedRouteIndex != null) {
+        const indexedRoute = routesForChart[state.selectedRouteIndex] || null;
+
+        if (!indexedRoute) {
+            state.selectedRouteIndex = null;
+            state.selectedRouteKey = null;
+            state.selectedStoryId = null;
+            state.pinnedCoords = null;
+        } else {
+            state.selectedRouteKey = indexedRoute.routeKey;
+        }
     }
 
     renderStoryMenuPanel(detailPanel, stories, state.selectedStoryId, (storyId) => {
         if (String(state.selectedStoryId) === String(storyId)) {
             state.selectedStoryId = null;
             state.selectedRouteKey = null;
+            state.selectedRouteIndex = null;
+            state.pinnedCoords = null;
         } else {
             state.selectedStoryId = String(storyId);
             state.selectedRouteKey = storyIdToRouteKey.get(String(storyId))?.routeKey || null;
+            state.selectedRouteIndex = state.selectedRouteKey && routeKeyToIndex.has(state.selectedRouteKey)
+                ? routeKeyToIndex.get(state.selectedRouteKey)
+                : null;
+            state.pinnedCoords = null;
         }
 
         onStateChange();
@@ -704,8 +733,30 @@ function renderTrajectoryChart({
 
     const root = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
+    root
+        .append("rect")
+        .attr("class", "poc-chart-background-hit")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", "100%")
+        .attr("height", "100%")
+        .attr("fill", "transparent")
+        .attr("pointer-events", "all")
+        .on("click", () => {
+            if (!state.selectedStoryId && !state.selectedRouteKey) {
+                return;
+            }
+
+            state.selectedStoryId = null;
+            state.selectedRouteKey = null;
+            state.selectedRouteIndex = null;
+            state.pinnedCoords = null;
+            hideNarrativeTooltip(narrativeTooltip);
+            onStateChange();
+        });
+
     const rowStep = y.step ? y.step() : (innerHeight / Math.max(1, yDomain.length));
-    const rowHeight = Math.max(24, rowStep);
+    const rowHeight = rowStep;
     const yDomainTopDown = yDomain
         .slice()
         .sort((a, b) => d3.ascending(y(a) ?? 0, y(b) ?? 0));
@@ -718,18 +769,10 @@ function renderTrajectoryChart({
         .data(yDomainTopDown)
         .join("rect")
         .attr("x", 0)
-        .attr("y", (eventLabel) => Math.max(0, (y(eventLabel) ?? 0) - (rowHeight / 2)))
+        .attr("y", (eventLabel) => (y(eventLabel) ?? 0) - (rowHeight / 2))
         .attr("width", innerWidth)
         .attr("height", rowHeight)
         .attr("fill", (_, index) => (index % 2 === 0 ? "rgba(184, 134, 11, 0.05)" : "transparent"));
-
-    root
-        .append("g")
-        .attr("class", "x-grid")
-        .attr("transform", `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(x).tickValues(xTicks).tickSize(0).tickFormat(""))
-        .call((axis) => axis.select(".domain").remove())
-        .call((axis) => axis.selectAll("line").remove());
 
     root
         .append("g")
@@ -776,22 +819,6 @@ function renderTrajectoryChart({
         appendFaIcon(iconBox, iconInfo, 18);
     });
 
-    root
-        .append("rect")
-        .attr("x", 0)
-        .attr("y", 0)
-        .attr("width", innerWidth)
-        .attr("height", innerHeight)
-        .attr("fill", "#000")
-        .attr("fill-opacity", 0.001)
-        .attr("pointer-events", "all")
-        .on("click", () => {
-            if (state.selectedRouteKey) {
-                state.selectedRouteKey = null;
-                onStateChange();
-            }
-        });
-
     const lineGenerator = d3
         .line()
         .x((d) => x(d.step + 1))
@@ -806,19 +833,23 @@ function renderTrajectoryChart({
         .join("g")
         .attr("class", "route-group");
 
-    const selectedRoute = state.selectedRouteKey
-        ? routesForChart.find((d) => d.routeKey === state.selectedRouteKey) || null
+    const selectedRouteIndex = Number.isInteger(state.selectedRouteIndex) ? state.selectedRouteIndex : null;
+    const selectedRoute = selectedRouteIndex != null ? routesForChart[selectedRouteIndex] || null : null;
+    const selectedStory = state.selectedStoryId
+        ? (stories || []).find((story) => String(story.id) === String(state.selectedStoryId)) || null
         : null;
-    const selectedStoryRouteKeys = new Set(
-        storyHighlights
-            .filter((entry) => (entry.stories || []).some((story) => String(story.id) === String(state.selectedStoryId || "")))
-            .map((entry) => entry.routeKey)
-    );
+    const selectedStorySemanticStroke = selectedStory
+        ? (STORY_HIGHLIGHT_STROKES[selectedStory.highlight] || "#c58a1a")
+        : "#c58a1a";
     let hoveredRouteKey = null;
 
-    function isHighlighted(routeData) {
+    function hasPinnedStory() {
+        return Boolean(state.selectedStoryId && state.selectedRouteIndex != null);
+    }
+
+    function isHighlighted(routeData, routeIndex) {
         if (state.selectedStoryId) {
-            return selectedStoryRouteKeys.has(routeData.routeKey);
+            return state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
         }
 
         if (hoveredRouteKey && !state.selectedRouteKey) {
@@ -832,24 +863,22 @@ function renderTrajectoryChart({
         return highlightByRoute.has(routeData.routeKey);
     }
 
-    function isPinnedRoute(routeData) {
-        return Boolean(selectedRoute && routeData.routeKey === selectedRoute.routeKey);
+    function isPinnedRoute(routeData, routeIndex) {
+        return Boolean(selectedRoute && routeIndex === selectedRouteIndex && routeData.routeKey === selectedRoute.routeKey);
     }
 
-    function getRouteColor(routeData) {
+    function getRouteColor(routeData, routeIndex) {
         const storyHighlight = highlightByRoute.get(routeData.routeKey);
 
         if (state.selectedStoryId) {
-            if (selectedStoryRouteKeys.has(routeData.routeKey)) {
-                return storyHighlight
-                    ? (STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#c58a1a")
-                    : "#304a74";
+            if (state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex) {
+                return selectedStorySemanticStroke;
             }
 
             return "#b58d66";
         }
 
-        if (isPinnedRoute(routeData)) {
+        if (isPinnedRoute(routeData, routeIndex)) {
             return storyHighlight
                 ? (STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#c58a1a")
                 : "#304a74";
@@ -872,12 +901,12 @@ function renderTrajectoryChart({
         return "#b58d66";
     }
 
-    function getRouteOpacity(routeData) {
+    function getRouteOpacity(routeData, routeIndex) {
         if (state.selectedStoryId) {
-            return selectedStoryRouteKeys.has(routeData.routeKey) ? 0.98 : (denseMode ? 0.15 : 0.2);
+            return state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex ? 1 : 0.15;
         }
 
-        if (isPinnedRoute(routeData)) {
+        if (isPinnedRoute(routeData, routeIndex)) {
             return 1;
         }
 
@@ -893,18 +922,18 @@ function renderTrajectoryChart({
             return 0.9;
         }
 
-        return denseMode ? 0.12 : 0.16;
+        return denseMode ? 0.15 : 0.2;
     }
 
-    function getRouteStrokeWidth(routeData) {
+    function getRouteStrokeWidth(routeData, routeIndex) {
         const storyHighlight = highlightByRoute.get(routeData.routeKey);
         const baseWidth = widthScale(routeData.totalStudents);
 
-        if (state.selectedStoryId && selectedStoryRouteKeys.has(routeData.routeKey)) {
+        if (state.selectedStoryId && state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex) {
             return Math.max(baseWidth + 1.6, 4.2);
         }
 
-        if (isPinnedRoute(routeData)) {
+        if (isPinnedRoute(routeData, routeIndex)) {
             return Math.max(baseWidth + 2.4, 4.8);
         }
 
@@ -924,15 +953,15 @@ function renderTrajectoryChart({
     }
 
     function applyRouteVisualState() {
-        routeGroup.each(function (routeData) {
+        routeGroup.each(function (routeData, routeIndex) {
             const group = d3.select(this);
             const path = group.select(".route-path");
-            const routeOpacity = getRouteOpacity(routeData);
+            const routeOpacity = getRouteOpacity(routeData, routeIndex);
 
             path
-                .attr("stroke", getRouteColor(routeData))
+                .attr("stroke", getRouteColor(routeData, routeIndex))
                 .attr("opacity", routeOpacity)
-                .attr("stroke-width", getRouteStrokeWidth(routeData));
+                .attr("stroke-width", getRouteStrokeWidth(routeData, routeIndex));
 
             group
                 .selectAll(".route-dot")
@@ -944,11 +973,11 @@ function renderTrajectoryChart({
 
             group
                 .select(".route-terminal")
-                .attr("opacity", isHighlighted(routeData) ? 1 : Math.max(0.3, routeOpacity + 0.08));
+                .attr("opacity", isHighlighted(routeData, routeIndex) ? 1 : Math.max(0.3, routeOpacity + 0.08));
 
             group
                 .select(".story-marker")
-                .style("opacity", isHighlighted(routeData) ? 1 : Math.max(0.35, routeOpacity));
+                .style("opacity", isHighlighted(routeData, routeIndex) ? 1 : Math.max(0.35, routeOpacity));
         });
     }
 
@@ -976,7 +1005,7 @@ function renderTrajectoryChart({
         };
     }
 
-    routeGroup.each(function (routeData) {
+    routeGroup.each(function (routeData, routeIndex) {
         const group = d3.select(this);
         const points = routeData.route.map((eventName, step) => ({ event: eventName, step }));
         const terminalPoint = points[points.length - 1];
@@ -994,19 +1023,27 @@ function renderTrajectoryChart({
         group
             .append("path")
             .attr("class", "route-path")
+            .attr("tabindex", 0)
+            .attr("role", "button")
+            .attr("aria-label", `Trajetoria com ${routeData.totalStudents} estudantes`)
             .attr("d", lineGenerator(points))
             .attr("fill", "none")
             .attr("stroke-linecap", "round")
             .attr("stroke-linejoin", "round")
-            .attr("stroke", getRouteColor(routeData))
-            .attr("opacity", getRouteOpacity(routeData))
-            .attr("stroke-width", getRouteStrokeWidth(routeData))
+            .attr("stroke", getRouteColor(routeData, routeIndex))
+            .attr("opacity", getRouteOpacity(routeData, routeIndex))
+            .attr("stroke-width", getRouteStrokeWidth(routeData, routeIndex))
             .style("filter", storyHighlight ? "drop-shadow(0 0 4px rgba(0,0,0,0.12))" : "none")
             .on("mouseover", (event) => {
                 hoveredRouteKey = routeData.routeKey;
                 applyRouteVisualState();
 
-                if (storyHighlight && activeStoryWithMetrics) {
+                if (!hasPinnedStory() && storyHighlight && activeStoryWithMetrics) {
+                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node());
+                }
+            })
+            .on("mousemove", (event) => {
+                if (!hasPinnedStory() && storyHighlight && activeStoryWithMetrics) {
                     showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node());
                 }
             })
@@ -1014,15 +1051,59 @@ function renderTrajectoryChart({
                 hoveredRouteKey = null;
                 applyRouteVisualState();
 
-                if (!isPinnedRoute(routeData)) {
+                if (!hasPinnedStory()) {
                     hideNarrativeTooltip(narrativeTooltip);
                 }
             })
             .on("click", (event) => {
                 event.stopPropagation();
 
-                state.selectedRouteKey = state.selectedRouteKey === routeData.routeKey ? null : routeData.routeKey;
-                state.selectedStoryId = state.selectedRouteKey && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
+                const [xCoord, yCoord] = d3.pointer(event, chartContainer.node());
+
+                const alreadySelected = state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
+                state.selectedRouteKey = alreadySelected ? null : routeData.routeKey;
+                state.selectedRouteIndex = alreadySelected ? null : routeIndex;
+                state.selectedStoryId = !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
+                state.pinnedCoords = !alreadySelected ? { x: xCoord, y: yCoord } : null;
+                onStateChange();
+            })
+            .on("focus", () => {
+                hoveredRouteKey = routeData.routeKey;
+                applyRouteVisualState();
+
+                if ((hasPinnedStory() && isHighlighted(routeData, routeIndex)) || (!hasPinnedStory() && activeStoryWithMetrics)) {
+                    showNarrativeTooltip(
+                        narrativeTooltip,
+                        hasPinnedStory() && state.pinnedCoords
+                            ? [state.pinnedCoords.x, state.pinnedCoords.y]
+                            : [storyMarkerPosition.x, storyMarkerPosition.y],
+                        activeStoryWithMetrics,
+                        chartContainer.node()
+                    );
+                }
+            })
+            .on("blur", () => {
+                hoveredRouteKey = null;
+                applyRouteVisualState();
+                if (!hasPinnedStory()) {
+                    hideNarrativeTooltip(narrativeTooltip);
+                }
+            })
+            .on("keydown", (event) => {
+                if (event.key !== "Enter" && event.key !== " ") {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                const alreadySelected = state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
+                state.selectedRouteKey = alreadySelected ? null : routeData.routeKey;
+                state.selectedRouteIndex = alreadySelected ? null : routeIndex;
+                state.selectedStoryId = !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
+                state.pinnedCoords = !alreadySelected
+                    ? { x: storyMarkerPosition.x, y: storyMarkerPosition.y }
+                    : null;
                 onStateChange();
             });
 
@@ -1038,7 +1119,7 @@ function renderTrajectoryChart({
             .attr("stroke", (d) => EVENT_COLOR[d.event] || "#cbd5e1")
             .attr("stroke-width", 2.8)
             .style("pointer-events", "none")
-            .style("opacity", Math.min(1, getRouteOpacity(routeData) + 0.26));
+            .style("opacity", Math.min(1, getRouteOpacity(routeData, routeIndex) + 0.26));
 
         group
             .selectAll(".route-dot")
@@ -1051,7 +1132,7 @@ function renderTrajectoryChart({
             .attr("height", 18)
             .style("overflow", "visible")
             .style("pointer-events", "none")
-            .style("opacity", Math.min(1, getRouteOpacity(routeData) + 0.22));
+            .style("opacity", Math.min(1, getRouteOpacity(routeData, routeIndex) + 0.22));
 
         group
             .selectAll(".route-dot")
@@ -1076,20 +1157,28 @@ function renderTrajectoryChart({
                 .attr("stroke", "#c85a5a")
                 .attr("stroke-width", 2)
                 .attr("stroke-dasharray", "4 3")
-                .attr("opacity", isHighlighted(routeData) ? 1 : 0.7)
+                .attr("opacity", isHighlighted(routeData, routeIndex) ? 1 : 0.7)
                 .style("pointer-events", "none");
         }
 
-        if (storyHighlight) {
+            if (storyHighlight && isPinnedRoute(routeData, routeIndex)) {
             const marker = group
                 .append("g")
                 .attr("class", "story-marker")
+                .attr("tabindex", 0)
+                .attr("role", "button")
+                .attr("aria-label", "Marcador narrativo da estoria")
                 .attr("transform", `translate(${storyMarkerPosition.x},${storyMarkerPosition.y})`)
                 .style("cursor", "pointer")
                 .on("mouseover", (event) => {
                     hoveredRouteKey = routeData.routeKey;
                     applyRouteVisualState();
-                    if (activeStoryWithMetrics) {
+                    if (!hasPinnedStory() && activeStoryWithMetrics) {
+                        showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node());
+                    }
+                })
+                .on("mousemove", (event) => {
+                    if (!hasPinnedStory() && activeStoryWithMetrics) {
                         showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node());
                     }
                 })
@@ -1097,14 +1186,54 @@ function renderTrajectoryChart({
                     hoveredRouteKey = null;
                     applyRouteVisualState();
 
-                    if (!isPinnedRoute(routeData)) {
+                    if (!hasPinnedStory()) {
                         hideNarrativeTooltip(narrativeTooltip);
                     }
                 })
                 .on("click", (event) => {
                     event.stopPropagation();
-                    state.selectedRouteKey = state.selectedRouteKey === routeData.routeKey ? null : routeData.routeKey;
-                    state.selectedStoryId = state.selectedRouteKey && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
+
+                    const [xCoord, yCoord] = d3.pointer(event, chartContainer.node());
+                    const alreadySelected = state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
+                    state.selectedRouteKey = alreadySelected ? null : routeData.routeKey;
+                    state.selectedRouteIndex = alreadySelected ? null : routeIndex;
+                    state.selectedStoryId = !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
+                    state.pinnedCoords = !alreadySelected ? { x: xCoord, y: yCoord } : null;
+                    onStateChange();
+                })
+                .on("focus", () => {
+                    hoveredRouteKey = routeData.routeKey;
+                    applyRouteVisualState();
+                    if (activeStoryWithMetrics) {
+                        showNarrativeTooltip(
+                            narrativeTooltip,
+                            [storyMarkerPosition.x, storyMarkerPosition.y],
+                            activeStoryWithMetrics,
+                            chartContainer.node()
+                        );
+                    }
+                })
+                .on("blur", () => {
+                    hoveredRouteKey = null;
+                    applyRouteVisualState();
+                    if (!hasPinnedStory()) {
+                        hideNarrativeTooltip(narrativeTooltip);
+                    }
+                })
+                .on("keydown", (event) => {
+                    if (event.key !== "Enter" && event.key !== " ") {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const alreadySelected = state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
+                    state.selectedRouteKey = alreadySelected ? null : routeData.routeKey;
+                    state.selectedRouteIndex = alreadySelected ? null : routeIndex;
+                    state.selectedStoryId = !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
+                    state.pinnedCoords = !alreadySelected
+                        ? { x: storyMarkerPosition.x, y: storyMarkerPosition.y }
+                        : null;
                     onStateChange();
                 });
 
@@ -1125,12 +1254,11 @@ function renderTrajectoryChart({
                 .text("!");
         }
 
-        if (isPinnedRoute(routeData) && storyHighlight && activeStoryWithMetrics) {
+        if (isPinnedRoute(routeData, routeIndex) && storyHighlight && activeStoryWithMetrics) {
             selectedStoryForPinned = activeStoryWithMetrics;
-            selectedStoryPointer = [
-                storyMarkerPosition.x,
-                storyMarkerPosition.y
-            ];
+            selectedStoryPointer = state.pinnedCoords
+                ? [state.pinnedCoords.x, state.pinnedCoords.y]
+                : null;
         }
     });
 
@@ -1208,6 +1336,8 @@ async function renderStudentJourneyPoC() {
             narrativeMode: "finished",
             selectedRouteKey: null,
             selectedStoryId: null,
+            selectedRouteIndex: null,
+            pinnedCoords: null,
         };
 
         let currentGroupedRoutes = [];
@@ -1240,6 +1370,8 @@ async function renderStudentJourneyPoC() {
             const visibleRoutes = buildNarrativeRoutes(currentGroupedRoutes, state.narrativeMode, state.minVolume);
             if (state.selectedRouteKey && !visibleRoutes.some((route) => route.routeKey === state.selectedRouteKey)) {
                 state.selectedRouteKey = null;
+                state.selectedRouteIndex = null;
+                state.pinnedCoords = null;
             }
 
             btnAll.attr("disabled", null);
@@ -1276,6 +1408,8 @@ async function renderStudentJourneyPoC() {
             state.narrativeMode = "finished";
             state.selectedRouteKey = null;
             state.selectedStoryId = null;
+            state.selectedRouteIndex = null;
+            state.pinnedCoords = null;
             refreshView();
         });
 
@@ -1289,6 +1423,8 @@ async function renderStudentJourneyPoC() {
             state.narrativeMode = "finished";
             state.selectedRouteKey = null;
             state.selectedStoryId = null;
+            state.selectedRouteIndex = null;
+            state.pinnedCoords = null;
             refreshView();
         });
 
@@ -1296,6 +1432,8 @@ async function renderStudentJourneyPoC() {
             state.narrativeMode = "unfinished";
             state.selectedRouteKey = null;
             state.selectedStoryId = null;
+            state.selectedRouteIndex = null;
+            state.pinnedCoords = null;
             refreshView();
         });
 
