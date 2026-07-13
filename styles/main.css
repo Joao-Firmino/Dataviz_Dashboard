@@ -109,10 +109,9 @@ input {
 
 .poc-header {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: stretch;
     gap: 12px;
-    flex-wrap: wrap;
     margin-bottom: 10px;
     flex: 0 0 auto;
 }
@@ -120,6 +119,7 @@ input {
 .poc-header__copy {
     display: grid;
     gap: 4px;
+    width: 100%;
 }
 
 .poc-kicker {
@@ -142,8 +142,9 @@ input {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
-    justify-content: flex-end;
+    justify-content: flex-start;
     align-items: center;
+    width: 100%;
 }
 
 .poc-control,
@@ -694,6 +695,30 @@ input {
 
 .poc-narrative-tooltip {
     pointer-events: none;
+}
+
+.poc-empty-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 4;
+}
+
+.poc-empty-overlay span {
+    max-width: min(560px, calc(100% - 40px));
+    text-align: center;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(173, 141, 106, 0.38);
+    background: rgba(255, 250, 241, 0.82);
+    color: #6a503b;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.35;
+    box-shadow: 0 8px 20px rgba(80, 52, 30, 0.08);
 }
 
 @media (max-width: 860px) {

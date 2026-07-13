@@ -603,18 +603,16 @@ function renderTrajectoryChart({
     state,
     onStateChange
 }) {
-    chartContainer.selectAll("svg, .poc-empty-state, .poc-render-note").remove();
+    chartContainer.selectAll("svg, .poc-empty-overlay, .poc-render-note").remove();
     const narrativeTooltip = ensureNarrativeTooltip(chartContainer);
 
     const routesToRender = buildNarrativeRoutes(groupedRoutes, state.narrativeMode, state.minVolume);
+    const routesForStoryMapping = buildNarrativeRoutes(groupedRoutes, state.narrativeMode, 1);
     const totalStudentsInScope = d3.sum(groupedRoutes, (entry) => entry.totalStudents) || 1;
     const MAX_RENDER_ROUTES = 180;
-    const routesForChart = routesToRender.slice(0, MAX_RENDER_ROUTES);
-    const hiddenRoutesCount = Math.max(0, routesToRender.length - routesForChart.length);
-    const allVisibleKeys = new Set(routesForChart.map((d) => d.routeKey));
-    const routeKeyToIndex = new Map(routesForChart.map((routeData, routeIndex) => [routeData.routeKey, routeIndex]));
+    const hiddenRoutesCount = Math.max(0, routesToRender.length - MAX_RENDER_ROUTES);
 
-    const { highlights: storyHighlights } = buildStoryRouteHighlights(stories, routesToRender);
+    const { highlights: storyHighlights } = buildStoryRouteHighlights(stories, routesForStoryMapping);
     const highlightByRoute = new Map(storyHighlights.map((entry) => [entry.routeKey, entry]));
     const storyIdToRouteKey = new Map();
 
@@ -632,9 +630,21 @@ function renderTrajectoryChart({
     if (state.selectedStoryId && !state.selectedRouteKey) {
         const selectedStoryRoute = storyIdToRouteKey.get(String(state.selectedStoryId));
         state.selectedRouteKey = selectedStoryRoute ? selectedStoryRoute.routeKey : null;
-        state.selectedRouteIndex = state.selectedRouteKey && routeKeyToIndex.has(state.selectedRouteKey)
-            ? routeKeyToIndex.get(state.selectedRouteKey)
-            : null;
+    }
+
+    const routesForChart = routesToRender.slice(0, MAX_RENDER_ROUTES);
+    if (state.selectedRouteKey && !routesForChart.some((routeData) => routeData.routeKey === state.selectedRouteKey)) {
+        const selectedRouteData = routesForStoryMapping.find((routeData) => routeData.routeKey === state.selectedRouteKey);
+        if (selectedRouteData) {
+            routesForChart.push(selectedRouteData);
+        }
+    }
+
+    const allVisibleKeys = new Set(routesForChart.map((d) => d.routeKey));
+    const routeKeyToIndex = new Map(routesForChart.map((routeData, routeIndex) => [routeData.routeKey, routeIndex]));
+
+    if (state.selectedRouteKey && routeKeyToIndex.has(state.selectedRouteKey)) {
+        state.selectedRouteIndex = routeKeyToIndex.get(state.selectedRouteKey);
     }
 
     if (state.selectedRouteKey && !allVisibleKeys.has(state.selectedRouteKey)) {
@@ -692,15 +702,7 @@ function renderTrajectoryChart({
     btnAll.classed("is-active", state.narrativeMode === "finished");
     btnDrop.classed("is-active", state.narrativeMode === "unfinished");
 
-    if (totalRoutes === 0) {
-        chartContainer
-            .append("div")
-            .attr("class", "poc-empty-state")
-            .style("padding", "24px")
-            .style("color", "#5f4a39")
-            .text("Nenhuma rota corresponde aos filtros atuais.");
-        return;
-    }
+    const isEmptyState = totalRoutes === 0;
 
     const width = chartContainer.node().clientWidth || 1100;
     const availableHeight = detailPanelContainer.node().clientHeight || chartContainer.node().clientHeight || 420;
@@ -708,10 +710,10 @@ function renderTrajectoryChart({
     const margin = { top: 16, right: 20, bottom: 48, left: 190 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
-    const maxSteps = d3.max(groupedRoutes, (d) => d.route.length) || 1;
+    const maxSteps = isEmptyState ? 6 : (d3.max(groupedRoutes, (d) => d.route.length) || 1);
     const allSteps = d3.range(1, maxSteps + 1);
-    const stepStride = Math.max(1, Math.ceil(allSteps.length / 12));
-    const xTicks = allSteps.filter((step, index) => index % stepStride === 0 || step === maxSteps);
+    const stepStride = isEmptyState ? 1 : Math.max(1, Math.ceil(allSteps.length / 12));
+    const xTicks = isEmptyState ? d3.range(1, 7) : allSteps.filter((step, index) => index % stepStride === 0 || step === maxSteps);
     const yDomain = EVENT_ORDER.map((eventName) => EVENT_LABEL[eventName]);
     const denseMode = routesForChart.length > 120;
 
@@ -1161,7 +1163,7 @@ function renderTrajectoryChart({
                 .style("pointer-events", "none");
         }
 
-            if (storyHighlight && isPinnedRoute(routeData, routeIndex)) {
+            if (storyHighlight) {
             const marker = group
                 .append("g")
                 .attr("class", "story-marker")
@@ -1268,6 +1270,17 @@ function renderTrajectoryChart({
         showNarrativeTooltip(narrativeTooltip, selectedStoryPointer, selectedStoryForPinned, chartContainer.node());
     } else {
         hideNarrativeTooltip(narrativeTooltip);
+    }
+
+    if (isEmptyState) {
+        const emptyMessage = state.narrativeMode === "unfinished"
+            ? `Nenhuma trajetória não finalizada atende aos filtros atuais para ${activityName}.`
+            : `Nenhuma trajetória finalizada atende aos filtros atuais para ${activityName}.`;
+
+        chartContainer
+            .append("div")
+            .attr("class", "poc-empty-overlay")
+            .html(`<span>${escapeHtml(emptyMessage)}</span>`);
     }
 
     if (hiddenRoutesCount > 0) {
