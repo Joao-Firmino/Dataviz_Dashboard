@@ -1,7 +1,6 @@
 import loadDashboardData from "./loadDashboardData.js";
 
 const EVENT_ORDER = [
-    "course_vis",
     "resource_vis",
     "forum_vis",
     "forum_participation",
@@ -27,10 +26,10 @@ function ensureNarrativeTooltip(chartContainer) {
         .style("max-width", "340px")
         .style("padding", "10px 12px")
         .style("border-radius", "12px")
-        .style("background", "rgba(255, 252, 247, 0.98)")
-        .style("border", "1px solid rgba(93, 64, 55, 0.18)")
-        .style("box-shadow", "0 12px 28px rgba(80, 52, 30, 0.16)")
-        .style("color", "#3f2e22")
+        .style("background", "rgba(248, 250, 252, 0.98)")
+        .style("border", "1px solid rgba(100, 116, 139, 0.25)")
+        .style("box-shadow", "0 12px 28px rgba(15, 23, 42, 0.14)")
+        .style("color", "#1f2937")
         .style("font-size", "12px")
         .style("line-height", "1.45");
 }
@@ -100,12 +99,12 @@ function showNarrativeTooltip(tooltip, pointer, story, containerNode) {
     const parametersMarkup = parameterEntries.length
         ? `
             <div style="display:grid; gap:5px; margin-top:2px;">
-                <div style="font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#6d5847;">Parâmetros</div>
+                <div style="font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#64748b;">Parâmetros</div>
                 ${parameterEntries
                     .map(([key, value]) => `
                         <div style="display:grid; grid-template-columns:max-content minmax(0,1fr); gap:6px; align-items:start; font-size:11px;">
-                            <span style="font-weight:800; color:#6f5540;">${escapeHtml(key)}</span>
-                            <span style="color:#473528;">${escapeHtml(formatStoryParameterValue(value))}</span>
+                            <span style="font-weight:800; color:#475569;">${escapeHtml(key)}</span>
+                            <span style="color:#334155;">${escapeHtml(formatStoryParameterValue(value))}</span>
                         </div>
                     `)
                     .join("")}
@@ -121,11 +120,11 @@ function showNarrativeTooltip(tooltip, pointer, story, containerNode) {
             <div style="display:grid; gap:6px;">
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     <span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:999px; background:${tone.soft}; border:1px solid ${tone.accent}33; color:${tone.accent}; font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase;">${escapeHtml(tone.label)}</span>
-                    <span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:999px; background:#f6efe5; border:1px solid #d8c7b4; color:#5d4037; font-size:10px; font-weight:900;">${escapeHtml(story.id)}</span>
+                    <span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:999px; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; font-size:10px; font-weight:900;">${escapeHtml(story.id)}</span>
                 </div>
                 <div style="font-weight:900;">${escapeHtml(story.title)}</div>
                 <div>${escapeHtml(story.question)}</div>
-                <div style="padding:6px 8px; border-radius:8px; background:#f7f1e8; border:1px solid #e2d2bf; color:#4d3a2b;">Alunos: <strong>${escapeHtml(String(affectedCount))}</strong> (${escapeHtml(affectedPctLabel)})</div>
+                <div style="padding:6px 8px; border-radius:8px; background:#f8fafc; border:1px solid #dbe3ed; color:#334155;">Alunos: <strong>${escapeHtml(String(affectedCount))}</strong> (${escapeHtml(affectedPctLabel)})</div>
                 ${parametersMarkup}
             </div>
         `);
@@ -136,7 +135,6 @@ function hideNarrativeTooltip(tooltip) {
     tooltip.style("display", "none");
 }
 const EVENT_LABEL = {
-    course_vis: "Vis. do curso",
     resource_vis: "Vis. de recursos",
     forum_vis: "Forum",
     forum_participation: "Part. forum",
@@ -146,7 +144,6 @@ const EVENT_LABEL = {
 };
 
 const EVENT_COLOR = {
-    course_vis: "#8d6e63",
     resource_vis: "#e64a19",
     forum_vis: "#ff94c2",
     forum_participation: "#00bcd4",
@@ -156,7 +153,6 @@ const EVENT_COLOR = {
 };
 
 const EVENT_FA_ICON = {
-    course_vis: { className: "fa-mouse-pointer", color: "#8d6e63" },
     resource_vis: { className: "fa-folder-open", color: "#e64a19" },
     forum_vis: { className: "fa-comments", color: "#ff94c2" },
     forum_participation: { className: "fa-comment-medical", color: "#00bcd4" },
@@ -169,22 +165,27 @@ function getEventIcon(eventName) {
     return EVENT_FA_ICON[eventName] || null;
 }
 
-function appendFaIcon(selection, iconInfo, size) {
+function appendFaIcon(selection, iconInfo, size, options = {}) {
+    const {
+        colorOverride = null,
+        className = ""
+    } = options;
+
     selection
         .append("xhtml:div")
+        .attr("class", className)
         .style("display", "flex")
         .style("align-items", "center")
         .style("justify-content", "center")
         .style("width", "100%")
         .style("height", "100%")
-        .style("color", iconInfo.color)
+        .style("color", colorOverride || iconInfo.color)
         .style("font-size", `${size}px`)
         .style("line-height", "1")
         .html(`<i class="fa-solid ${iconInfo.className}"></i>`);
 }
 
 const EVENT_ICON = {
-    course_vis: '<path d="M5 5h7v14H5z"></path><path d="M12 5h7v14h-7z"></path>',
     resource_vis: '<path d="M7 4h8l4 4v12H7z"></path><path d="M15 4v4h4"></path>',
     forum_vis: '<path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v5A2.5 2.5 0 0 1 16.5 14H11l-4 3v-3H7.5A2.5 2.5 0 0 1 5 11.5z"></path>',
     forum_participation: '<path d="M7 16c0-2 1.7-3.5 4-3.5s4 1.5 4 3.5"></path><circle cx="11" cy="8" r="2.3"></circle><path d="M15.5 8.5h3"></path><path d="M17 7v3"></path>',
@@ -774,31 +775,31 @@ function renderTrajectoryChart({
         .attr("y", (eventLabel) => (y(eventLabel) ?? 0) - (rowHeight / 2))
         .attr("width", innerWidth)
         .attr("height", rowHeight)
-        .attr("fill", (_, index) => (index % 2 === 0 ? "rgba(184, 134, 11, 0.05)" : "transparent"));
+        .attr("fill", (_, index) => (index % 2 === 0 ? "rgba(0, 0, 0, 0.03)" : "transparent"));
 
     root
         .append("g")
         .attr("class", "y-grid")
         .call(d3.axisLeft(y).tickSize(-innerWidth).tickFormat(""))
         .call((axis) => axis.select(".domain").remove())
-        .call((axis) => axis.selectAll("line").attr("stroke", "#efe6dc").attr("stroke-dasharray", "3 5"));
+        .call((axis) => axis.selectAll("line").attr("stroke", "#e2e8f0").attr("stroke-dasharray", "3 5"));
 
     root
         .append("g")
         .attr("transform", `translate(0,${innerHeight})`)
         .call(d3.axisBottom(x).tickValues(xTicks).tickFormat((step) => `${step}`))
-        .call((axis) => axis.selectAll("text").attr("fill", "#5f4a39").style("font-size", "12px"))
-        .call((axis) => axis.select(".domain").attr("stroke", "#9a8c7f"));
+        .call((axis) => axis.selectAll("text").attr("fill", "#64748b").style("font-size", "12px"))
+        .call((axis) => axis.select(".domain").attr("stroke", "#94a3b8"));
 
     const yAxis = root
         .append("g")
         .call(d3.axisLeft(y).tickPadding(0).tickSize(6))
         .call((axis) => axis.selectAll("text")
-            .attr("fill", "#5f4a39")
+            .attr("fill", "#475569")
             .style("font-size", "12px")
             .style("text-anchor", "start")
             .attr("x", -130))
-        .call((axis) => axis.select(".domain").attr("stroke", "#9a8c7f"));
+        .call((axis) => axis.select(".domain").attr("stroke", "#94a3b8"));
 
     yAxis.selectAll(".tick").each(function (eventLabel) {
         const eventName = EVENT_ORDER.find((name) => EVENT_LABEL[name] === eventLabel);
@@ -808,17 +809,33 @@ function renderTrajectoryChart({
             return;
         }
 
-        const iconBox = d3.select(this)
+        const tick = d3.select(this);
+
+        tick
+            .insert("circle", ":first-child")
+            .attr("class", "poc-yaxis-icon-bg")
+            .attr("cx", -146)
+            .attr("cy", 0)
+            .attr("r", 12)
+            .attr("fill", "#ffffff")
+            .attr("stroke", EVENT_COLOR[eventName] || "#cbd5e1")
+            .attr("stroke-width", 2.8)
+            .style("pointer-events", "none");
+
+        const iconBox = tick
             .insert("foreignObject", ":first-child")
             .attr("class", "poc-yaxis-icon")
-            .attr("x", -160)
-            .attr("y", -14)
-            .attr("width", 28)
-            .attr("height", 28)
+            .attr("x", -155)
+            .attr("y", -9)
+            .attr("width", 18)
+            .attr("height", 18)
             .style("overflow", "visible")
             .style("pointer-events", "none");
 
-        appendFaIcon(iconBox, iconInfo, 18);
+        appendFaIcon(iconBox, iconInfo, 16, {
+            colorOverride: EVENT_COLOR[eventName] || iconInfo.color,
+            className: "route-dot-icon"
+        });
     });
 
     const lineGenerator = d3
@@ -841,8 +858,8 @@ function renderTrajectoryChart({
         ? (stories || []).find((story) => String(story.id) === String(state.selectedStoryId)) || null
         : null;
     const selectedStorySemanticStroke = selectedStory
-        ? (STORY_HIGHLIGHT_STROKES[selectedStory.highlight] || "#c58a1a")
-        : "#c58a1a";
+        ? (STORY_HIGHLIGHT_STROKES[selectedStory.highlight] || "#2563eb")
+        : "#2563eb";
     let hoveredRouteKey = null;
 
     function hasPinnedStory() {
@@ -862,7 +879,7 @@ function renderTrajectoryChart({
             return routeData.routeKey === selectedRoute.routeKey;
         }
 
-        return highlightByRoute.has(routeData.routeKey);
+        return false;
     }
 
     function isPinnedRoute(routeData, routeIndex) {
@@ -877,35 +894,29 @@ function renderTrajectoryChart({
                 return selectedStorySemanticStroke;
             }
 
-            return "#b58d66";
+            return "#cbd5e1";
         }
 
         if (isPinnedRoute(routeData, routeIndex)) {
             return storyHighlight
-                ? (STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#c58a1a")
-                : "#304a74";
+                ? (STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#2563eb")
+                : "#475569";
         }
 
         if (state.selectedRouteKey) {
-            return "#b58d66";
+            return "#cbd5e1";
         }
 
         if (hoveredRouteKey && routeData.routeKey === hoveredRouteKey) {
-            return storyHighlight
-                ? (STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#c58a1a")
-                : "#304a74";
+            return "#94a3b8";
         }
 
-        if (storyHighlight) {
-            return STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#c58a1a";
-        }
-
-        return "#b58d66";
+        return "#cbd5e1";
     }
 
     function getRouteOpacity(routeData, routeIndex) {
         if (state.selectedStoryId) {
-            return state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex ? 1 : 0.15;
+            return state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex ? 1 : 0.25;
         }
 
         if (isPinnedRoute(routeData, routeIndex)) {
@@ -913,18 +924,14 @@ function renderTrajectoryChart({
         }
 
         if (state.selectedRouteKey) {
-            return denseMode ? 0.15 : 0.2;
+            return denseMode ? 0.25 : 0.3;
         }
 
         if (hoveredRouteKey) {
-            return routeData.routeKey === hoveredRouteKey ? 0.95 : (denseMode ? 0.15 : 0.2);
+            return routeData.routeKey === hoveredRouteKey ? 0.95 : (denseMode ? 0.25 : 0.3);
         }
 
-        if (highlightByRoute.has(routeData.routeKey)) {
-            return 0.9;
-        }
-
-        return denseMode ? 0.15 : 0.2;
+        return denseMode ? 0.25 : 0.3;
     }
 
     function getRouteStrokeWidth(routeData, routeIndex) {
@@ -971,15 +978,17 @@ function renderTrajectoryChart({
 
             group
                 .selectAll(".route-dot-bg")
+                .attr("stroke", (d) => EVENT_COLOR[d.event] || "#cbd5e1")
                 .style("opacity", Math.min(1, routeOpacity + 0.26));
 
             group
-                .select(".route-terminal")
-                .attr("opacity", isHighlighted(routeData, routeIndex) ? 1 : Math.max(0.3, routeOpacity + 0.08));
+                .selectAll(".route-dot-icon")
+                .style("color", (d) => EVENT_COLOR[d.event] || "#64748b");
 
             group
-                .select(".story-marker")
-                .style("opacity", isHighlighted(routeData, routeIndex) ? 1 : Math.max(0.35, routeOpacity));
+                .select(".route-terminal")
+                .attr("stroke", isHighlighted(routeData, routeIndex) ? "#ef4444" : "#cbd5e1")
+                .attr("opacity", isHighlighted(routeData, routeIndex) ? 1 : Math.max(0.3, routeOpacity + 0.08));
         });
     }
 
@@ -1009,9 +1018,14 @@ function renderTrajectoryChart({
 
     routeGroup.each(function (routeData, routeIndex) {
         const group = d3.select(this);
-        const points = routeData.route.map((eventName, step) => ({ event: eventName, step }));
+        const points = routeData.route
+            .filter((eventName) => EVENT_ORDER.includes(eventName))
+            .map((eventName, step) => ({ event: eventName, step }));
+        if (!points.length) {
+            return;
+        }
         const terminalPoint = points[points.length - 1];
-        const submissionIndex = routeData.route.indexOf("assignment_sub");
+        const submissionIndex = points.findIndex((point) => point.event === "assignment_sub");
         const submissionPoint = submissionIndex >= 0 ? points[submissionIndex] : null;
         const storyHighlight = highlightByRoute.get(routeData.routeKey) || null;
         const activeStory = storyHighlight
@@ -1145,7 +1159,10 @@ function renderTrajectoryChart({
                     return;
                 }
 
-                appendFaIcon(d3.select(this), iconInfo, 16);
+                appendFaIcon(d3.select(this), iconInfo, 16, {
+                    colorOverride: EVENT_COLOR[d.event] || iconInfo.color,
+                    className: "route-dot-icon"
+                });
             });
 
         if (!submissionPoint) {
@@ -1156,104 +1173,11 @@ function renderTrajectoryChart({
                 .attr("cy", y(EVENT_LABEL[terminalPoint.event]))
                 .attr("r", 6)
                 .attr("fill", "#ffffff")
-                .attr("stroke", "#c85a5a")
+                .attr("stroke", "#cbd5e1")
                 .attr("stroke-width", 2)
                 .attr("stroke-dasharray", "4 3")
                 .attr("opacity", isHighlighted(routeData, routeIndex) ? 1 : 0.7)
                 .style("pointer-events", "none");
-        }
-
-            if (storyHighlight) {
-            const marker = group
-                .append("g")
-                .attr("class", "story-marker")
-                .attr("tabindex", 0)
-                .attr("role", "button")
-                .attr("aria-label", "Marcador narrativo da estoria")
-                .attr("transform", `translate(${storyMarkerPosition.x},${storyMarkerPosition.y})`)
-                .style("cursor", "pointer")
-                .on("mouseover", (event) => {
-                    hoveredRouteKey = routeData.routeKey;
-                    applyRouteVisualState();
-                    if (!hasPinnedStory() && activeStoryWithMetrics) {
-                        showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node());
-                    }
-                })
-                .on("mousemove", (event) => {
-                    if (!hasPinnedStory() && activeStoryWithMetrics) {
-                        showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node());
-                    }
-                })
-                .on("mouseout", () => {
-                    hoveredRouteKey = null;
-                    applyRouteVisualState();
-
-                    if (!hasPinnedStory()) {
-                        hideNarrativeTooltip(narrativeTooltip);
-                    }
-                })
-                .on("click", (event) => {
-                    event.stopPropagation();
-
-                    const [xCoord, yCoord] = d3.pointer(event, chartContainer.node());
-                    const alreadySelected = state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
-                    state.selectedRouteKey = alreadySelected ? null : routeData.routeKey;
-                    state.selectedRouteIndex = alreadySelected ? null : routeIndex;
-                    state.selectedStoryId = !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
-                    state.pinnedCoords = !alreadySelected ? { x: xCoord, y: yCoord } : null;
-                    onStateChange();
-                })
-                .on("focus", () => {
-                    hoveredRouteKey = routeData.routeKey;
-                    applyRouteVisualState();
-                    if (activeStoryWithMetrics) {
-                        showNarrativeTooltip(
-                            narrativeTooltip,
-                            [storyMarkerPosition.x, storyMarkerPosition.y],
-                            activeStoryWithMetrics,
-                            chartContainer.node()
-                        );
-                    }
-                })
-                .on("blur", () => {
-                    hoveredRouteKey = null;
-                    applyRouteVisualState();
-                    if (!hasPinnedStory()) {
-                        hideNarrativeTooltip(narrativeTooltip);
-                    }
-                })
-                .on("keydown", (event) => {
-                    if (event.key !== "Enter" && event.key !== " ") {
-                        return;
-                    }
-
-                    event.preventDefault();
-                    event.stopPropagation();
-                    const alreadySelected = state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
-                    state.selectedRouteKey = alreadySelected ? null : routeData.routeKey;
-                    state.selectedRouteIndex = alreadySelected ? null : routeIndex;
-                    state.selectedStoryId = !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
-                    state.pinnedCoords = !alreadySelected
-                        ? { x: storyMarkerPosition.x, y: storyMarkerPosition.y }
-                        : null;
-                    onStateChange();
-                });
-
-            marker
-                .append("circle")
-                .attr("r", 11)
-                .attr("fill", "#fffdf9")
-                .attr("stroke", STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#c58a1a")
-                .attr("stroke-width", 2);
-
-            marker
-                .append("text")
-                .attr("text-anchor", "middle")
-                .attr("dy", "0.35em")
-                .attr("fill", STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#c58a1a")
-                .attr("font-size", 12)
-                .attr("font-weight", 900)
-                .text("!");
         }
 
         if (isPinnedRoute(routeData, routeIndex) && storyHighlight && activeStoryWithMetrics) {
@@ -1294,9 +1218,9 @@ function renderTrajectoryChart({
             .style("border-radius", "999px")
             .style("font-size", "11px")
             .style("font-weight", "700")
-            .style("background", "rgba(255, 248, 236, 0.94)")
-            .style("border", "1px solid #d9c6b0")
-            .style("color", "#6d5440")
+            .style("background", "rgba(248, 250, 252, 0.94)")
+            .style("border", "1px solid #cbd5e1")
+            .style("color", "#475569")
             .text(`Mostrando ${routesForChart.length} de ${routesToRender.length} rotas.`);
     }
 }
