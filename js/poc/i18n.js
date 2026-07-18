@@ -1,0 +1,192 @@
+const translations = {
+    pt: {
+        appTitle: "Dataviz Dashboard - Jornada do Estudante",
+        kicker: "Analise interativa",
+        chartPrompt: "Como os estudantes percorrem a atividade?",
+        activity: "Atividade",
+        minVolumePrefix: "Rotas com min.",
+        minVolumeSuffix: "aluno(s)",
+        selectActivityAria: "Selecionar atividade",
+        minVolumeAria: "Volume minimo de alunos",
+        finishedRoutes: "Trajetorias finalizadas",
+        unfinishedRoutes: "Trajetorias nao finalizadas",
+        panelTitle: "Historias da atividade",
+        panelLoading: "Carregando historias...",
+        noStories: "Nenhuma historia foi retornada para esta atividade.",
+        recalculatingStories: "Recalculando historias...",
+        categoryDeadline: "Prazo e urgencia",
+        categoryPrep: "Preparacao e percurso",
+        categoryBottleneck: "Gargalos de conversao",
+        categorySocial: "Forum e engajamento social",
+        categoryRhythm: "Ritmo de estudo",
+        categoryProfile: "Perfis comportamentais",
+        categoryOther: "Outras narrativas",
+        untitledStory: "Sem titulo",
+        storyTitleFallback: "Historia",
+        studentsLabel: "Alunos",
+        paramsLabel: "Parametros",
+        modeFinished: "Trajetorias finalizadas",
+        modeUnfinished: "Trajetorias nao finalizadas",
+        inWord: "em",
+        routesCountSuffix: "rotas",
+        noRoutesMode: "Sem rotas suficientes em",
+        ariaJourneyIn: "Jornada dos estudantes em",
+        ariaRouteWithStudents: "Trajetoria com",
+        studentsWord: "estudantes",
+        emptyUnfinished: "Nenhuma trajetoria nao finalizada atende aos filtros atuais para",
+        emptyFinished: "Nenhuma trajetoria finalizada atende aos filtros atuais para",
+        showingRoutes: "Mostrando",
+        ofRoutes: "de",
+        dragHint: "Arraste para definir a rota padrao",
+        routeFinished: "Trajetoria finalizada",
+        routeUnfinished: "Trajetoria nao finalizada",
+        event_resource_vis: "Vis. de recursos",
+        event_forum_vis: "Forum",
+        event_forum_participation: "Part. forum",
+        event_assignment_vis: "Vis. da atividade",
+        event_assignment_try: "Tentativa",
+        event_assignment_sub: "Entrega"
+    },
+    en: {
+        appTitle: "Dataviz Dashboard - Student Journey",
+        kicker: "Interactive analysis",
+        chartPrompt: "How do students move through the activity?",
+        activity: "Activity",
+        minVolumePrefix: "Routes with min.",
+        minVolumeSuffix: "student(s)",
+        selectActivityAria: "Select activity",
+        minVolumeAria: "Minimum student volume",
+        finishedRoutes: "Completed trajectories",
+        unfinishedRoutes: "Unfinished trajectories",
+        panelTitle: "Activity stories",
+        panelLoading: "Loading stories...",
+        noStories: "No stories were returned for this activity.",
+        recalculatingStories: "Recalculating stories...",
+        categoryDeadline: "Deadlines and urgency",
+        categoryPrep: "Preparation and path",
+        categoryBottleneck: "Conversion bottlenecks",
+        categorySocial: "Forum and social engagement",
+        categoryRhythm: "Study rhythm",
+        categoryProfile: "Behavioral profiles",
+        categoryOther: "Other narratives",
+        untitledStory: "Untitled",
+        storyTitleFallback: "Story",
+        studentsLabel: "Students",
+        paramsLabel: "Parameters",
+        modeFinished: "Completed trajectories",
+        modeUnfinished: "Unfinished trajectories",
+        inWord: "in",
+        routesCountSuffix: "routes",
+        noRoutesMode: "No routes match filters in",
+        ariaJourneyIn: "Student journey in",
+        ariaRouteWithStudents: "Trajectory with",
+        studentsWord: "students",
+        emptyUnfinished: "No unfinished trajectory matches current filters for",
+        emptyFinished: "No completed trajectory matches current filters for",
+        showingRoutes: "Showing",
+        ofRoutes: "of",
+        dragHint: "Drag to define default route",
+        routeFinished: "Completed trajectory",
+        routeUnfinished: "Unfinished trajectory",
+        event_resource_vis: "Resource view",
+        event_forum_vis: "Forum",
+        event_forum_participation: "Forum participation",
+        event_assignment_vis: "Activity view",
+        event_assignment_try: "Attempt",
+        event_assignment_sub: "Submission",
+
+        "Risco Alto": "High risk",
+        "Risco": "Risk",
+        "Atenção": "Attention",
+        "Positiva": "Positive",
+        "Prazo e urgência": "Deadlines and urgency",
+        "Prazo e urgencia": "Deadlines and urgency",
+        "Preparação e percurso": "Preparation and path",
+        "Preparacao e percurso": "Preparation and path",
+        "Gargalos de conversão": "Conversion bottlenecks",
+        "Gargalos de conversao": "Conversion bottlenecks",
+        "Fórum e engajamento social": "Forum and social engagement",
+        "Forum e engajamento social": "Forum and social engagement",
+        "Ritmo de estudo": "Study rhythm",
+        "Perfis comportamentais": "Behavioral profiles",
+        "Outras narrativas": "Other narratives",
+        "Fluxo ideal incompleto": "Incomplete ideal flow",
+        "Historias da atividade": "Activity stories",
+        "Estorias da atividade": "Activity stories",
+        "Sem titulo": "Untitled",
+        "Historia": "Story",
+
+        "Submissão sem preparação prévia": "Submission without prior preparation",
+        "Submissao sem preparacao previa": "Submission without prior preparation",
+        "Fluxo ideal incompleto": "Incomplete ideal flow",
+        "Tentou mas não submeteu": "Attempted but did not submit",
+        "Tentou mas nao submeteu": "Attempted but did not submit",
+        "Revisita aos materiais após submissão": "Revisit to materials after submission",
+        "Revisita aos materiais apos submissao": "Revisit to materials after submission",
+        "Visualizou mas nunca tentou": "Viewed but never attempted",
+        "Submissão rápida após tentativa": "Fast submission after attempt",
+        "Submissao rapida apos tentativa": "Fast submission after attempt",
+        "Submissão sem participação em fórum": "Submission without forum participation",
+        "Submissao sem participacao em forum": "Submission without forum participation",
+        "Fórum sem entrega posterior": "Forum without subsequent submission",
+        "Forum sem entrega posterior": "Forum without subsequent submission",
+        "Pouco consumo de material antes da entrega": "Low material usage before submission",
+        "Visualizou mas abandonou": "Viewed but dropped out",
+        "Navegação superficial": "Superficial navigation",
+        "Navegacao superficial": "Superficial navigation",
+
+        "Mais de um terço das submissões ocorreu sem acesso prévio aos materiais?": "Did more than one-third of submissions happen without prior access to materials?",
+        "Mais de um terco das submissoes ocorreu sem acesso previo aos materiais?": "Did more than one-third of submissions happen without prior access to materials?",
+        "Parte dos alunos não percorre todas as etapas esperadas antes da submissão?": "Do some students fail to complete all expected steps before submission?",
+        "Parte dos alunos nao percorre todas as etapas esperadas antes da submissao?": "Do some students fail to complete all expected steps before submission?",
+        "Alguns alunos iniciam atividades mas não chegam à submissão final?": "Do some students start activities but never reach final submission?",
+        "Alguns alunos iniciam atividades mas nao chegam a submissao final?": "Do some students start activities but never reach final submission?",
+        "Grande parte da turma revisitou os materiais depois da submissão?": "Did a large share of the class revisit materials after submission?",
+        "Grande parte da turma revisitou os materiais depois da submissao?": "Did a large share of the class revisit materials after submission?",
+        "Alguns alunos chegam até a atividade, mas não iniciam a tentativa?": "Do some students reach the activity but never start an attempt?",
+        "Alguns alunos chegam ate a atividade, mas nao iniciam a tentativa?": "Do some students reach the activity but never start an attempt?",
+        "A maioria das submissões acontece logo após a primeira tentativa?": "Do most submissions happen shortly after the first attempt?",
+        "A maioria das submissoes acontece logo apos a primeira tentativa?": "Do most submissions happen shortly after the first attempt?",
+        "Participação no fórum aparece associada a desempenho um pouco melhor?": "Is forum participation associated with slightly better performance?",
+        "Participacao no forum aparece associada a desempenho um pouco melhor?": "Is forum participation associated with slightly better performance?",
+        "Discussão no fórum nem sempre virou entrega de atividade?": "Did forum discussion not always lead to activity submission?",
+        "Discussao no forum nem sempre virou entrega de atividade?": "Did forum discussion not always lead to activity submission?",
+        "Há alunos que submetem atividades consumindo poucos materiais de apoio?": "Are there students submitting activities after using very few support materials?",
+        "Ha alunos que submetem atividades consumindo poucos materiais de apoio?": "Are there students submitting activities after using very few support materials?",
+        "Parte da turma abandona o fluxo após visualizar a atividade?": "Does part of the class drop out after viewing the activity?",
+        "Parte da turma abandona o fluxo apos visualizar a atividade?": "Does part of the class drop out after viewing the activity?",
+        "Há alunos que navegam pelo curso sem chegar às atividades?": "Are there students navigating the course without reaching activities?",
+        "Ha alunos que navegam pelo curso sem chegar as atividades?": "Are there students navigating the course without reaching activities?"
+    }
+};
+
+function t(lang, key) {
+    const normalized = String(key ?? "");
+
+    if (lang === "en") {
+        return translations.en[normalized] || translations.pt[normalized] || normalized;
+    }
+
+    return translations.pt[normalized] || normalized;
+}
+
+function tr(lang, rawText) {
+    if (rawText == null) return "";
+    const normalized = String(rawText);
+
+    if (lang === "en") {
+        const s7PrefixA = "Participação no fórum aparece associada a desempenho um pouco melhor?";
+        const s7PrefixB = "Participacao no forum aparece associada a desempenho um pouco melhor?";
+
+        if (normalized.startsWith(s7PrefixA) || normalized.startsWith(s7PrefixB)) {
+            const base = normalized.startsWith(s7PrefixA) ? s7PrefixA : s7PrefixB;
+            const translatedBase = translations.en[base] || translations.en[s7PrefixA] || base;
+            const suffix = normalized.slice(base.length).replace("; risco <", "; risk <");
+            return `${translatedBase}${suffix}`;
+        }
+    }
+
+    return t(lang, normalized);
+}
+
+export { translations, t, tr };
