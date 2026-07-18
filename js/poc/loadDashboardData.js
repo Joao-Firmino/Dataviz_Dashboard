@@ -1,13 +1,7 @@
 const DEFAULT_API_BASE = "http://localhost:8000";
 
 const DEFAULT_TIMELINE_REQUEST = {
-    simplification: {
-        multilevel: false,
-        coalescing_repeating: false,
-        coalescing_hidden: true,
-        spell: false,
-        temporal_folding: false
-    },
+    scenario: 7,
     thresholds: {
         low_grade: 0.5,
         high_grade: 0.75,
@@ -48,7 +42,13 @@ async function fetchJson(path, init = {}) {
 }
 
 function buildTimelineRequest(assignmentId, overrides = {}) {
-    return {
+    const scenarioOverride = Number.isInteger(overrides.scenario)
+        ? overrides.scenario
+        : Number.isInteger(overrides.simplification)
+            ? overrides.simplification
+            : DEFAULT_TIMELINE_REQUEST.scenario;
+
+    const requestPayload = {
         assignment_id: assignmentId,
         t_start: overrides.t_start ?? null,
         t_end: overrides.t_end ?? null,
@@ -56,10 +56,7 @@ function buildTimelineRequest(assignmentId, overrides = {}) {
         cities: overrides.cities ?? null,
         event_classes: overrides.event_classes ?? null,
         segment: overrides.segment ?? null,
-        simplification: {
-            ...DEFAULT_TIMELINE_REQUEST.simplification,
-            ...(overrides.simplification || {})
-        },
+        scenario: scenarioOverride,
         thresholds: {
             ...DEFAULT_TIMELINE_REQUEST.thresholds,
             ...(overrides.thresholds || {})
@@ -69,6 +66,12 @@ function buildTimelineRequest(assignmentId, overrides = {}) {
         hide_rare_classes: overrides.hide_rare_classes ?? DEFAULT_TIMELINE_REQUEST.hide_rare_classes,
         compare_mode: overrides.compare_mode ?? DEFAULT_TIMELINE_REQUEST.compare_mode
     };
+
+    if (overrides.story_params && typeof overrides.story_params === "object") {
+        requestPayload.story_params = overrides.story_params;
+    }
+
+    return requestPayload;
 }
 
 async function loadDashboardData() {
@@ -94,4 +97,5 @@ async function loadDashboardData() {
 }
 
 export { buildTimelineRequest };
+export { fetchJson };
 export default loadDashboardData;

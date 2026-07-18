@@ -1,15 +1,4 @@
-:root {
-    --page-bg: #f5efe7;
-    --page-bg-2: #ebe2d6;
-    --panel-bg: #fffaf1;
-    --panel-border: #dfd2c2;
-    --panel-strong: #5d4037;
-    --text-main: #3f2e22;
-    --text-soft: #6a503b;
-    --shadow: 0 18px 40px rgba(80, 52, 30, 0.12);
-    --accent: #5b86c5;
-    --accent-strong: #304a74;
-}
+@import "./colors.css";
 
 * {
     box-sizing: border-box;
@@ -312,6 +301,16 @@ input {
 .poc-dashboard-container svg {
     display: block;
     margin: 0 auto;
+}
+
+@keyframes poc-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .poc-yaxis-icon,
@@ -825,17 +824,7 @@ input {
     box-shadow: 0 8px 20px rgba(80, 52, 30, 0.08);
 }
 
-/* Decluttering: neutral grayscale workspace to keep semantic highlights prominent. */
-:root {
-    --page-bg: #f8fafc;
-    --page-bg-2: #f1f5f9;
-    --panel-bg: #ffffff;
-    --panel-border: #dbe3ed;
-    --panel-strong: #334155;
-    --text-main: #1f2937;
-    --text-soft: #64748b;
-    --shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-}
+/* Palette is centralized in styles/colors.css. */
 
 body {
     background:

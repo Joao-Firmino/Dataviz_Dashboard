@@ -1,0 +1,49 @@
+:root {
+    /* Core neutrals */
+    --white: #ffffff;
+    --slate-950: #0f172a;
+    --slate-900: #1e293b;
+    --slate-800: #334155;
+    --slate-700: #475569;
+    --slate-500: #64748b;
+    --slate-400: #94a3b8;
+    --slate-300: #cbd5e1;
+    --slate-200: #e2e8f0;
+    --slate-100: #f1f5f9;
+    --slate-50: #f8fafc;
+
+    /* App semantic palette */
+    --page-bg: var(--slate-50);
+    --page-bg-2: var(--slate-100);
+    --panel-bg: var(--white);
+    --panel-border: #dbe3ed;
+    --panel-strong: var(--slate-800);
+    --text-main: #1f2937;
+    --text-soft: var(--slate-500);
+    --shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    --accent: #5b86c5;
+    --accent-strong: #304a74;
+
+    /* Status colors */
+    --status-risk-strong: #c44;
+    --status-risk-soft: rgba(196, 68, 68, 0.12);
+    --status-attention-strong: #b46f12;
+    --status-attention-stroke: #c58a1a;
+    --status-attention-soft: rgba(180, 111, 18, 0.12);
+    --status-good-strong: #2f8f5b;
+    --status-good-soft: rgba(47, 143, 91, 0.12);
+
+    /* Event colors */
+    --event-resource-vis: #e64a19;
+    --event-forum-vis: #ff94c2;
+    --event-forum-participation: #00bcd4;
+    --event-assignment-vis: #00897b;
+    --event-assignment-try: #819ca9;
+    --event-assignment-sub: #c0ca33;
+
+    /* Utility colors */
+    --overlay-soft: rgba(248, 250, 252, 0.82);
+    --zebra-stripe: rgba(0, 0, 0, 0.03);
+    --terminal-alert: #ef4444;
+    --selection-fallback: #2563eb;
+}

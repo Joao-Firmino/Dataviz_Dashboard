@@ -1,4 +1,6 @@
-import loadDashboardData from "./loadDashboardData.js";
+import loadDashboardData, { buildTimelineRequest, fetchJson } from "./loadDashboardData.js";
+import { t, tr } from "./i18n.js";
+import { DashboardTheme } from "./colors.js";
 
 const EVENT_ORDER = [
     "resource_vis",
@@ -18,162 +20,6 @@ const DEFAULT_EVENTS_ORDER = [
     "resource_vis"
 ];
 
-const I18N = {
-    pt: {
-        appTitle: "Dataviz Dashboard - Jornada do Estudante",
-        kicker: "Análise interativa",
-        chartPrompt: "Como os estudantes percorrem a atividade?",
-        activity: "Atividade",
-        minVolumePrefix: "Rotas com mín.",
-        minVolumeSuffix: "aluno(s)",
-        selectActivityAria: "Selecionar atividade",
-        minVolumeAria: "Volume mínimo de alunos",
-        finishedRoutes: "Trajetórias finalizadas",
-        unfinishedRoutes: "Trajetórias não finalizadas",
-        panelTitle: "Estórias da atividade",
-        panelLoading: "Carregando estórias...",
-        noStories: "Nenhuma estória foi retornada para esta atividade.",
-        categoryDeadline: "Prazo e urgência",
-        categoryPrep: "Preparação e percurso",
-        categoryBottleneck: "Gargalos de conversão",
-        categorySocial: "Fórum e engajamento social",
-        categoryRhythm: "Ritmo de estudo",
-        categoryProfile: "Perfis comportamentais",
-        categoryOther: "Outras narrativas",
-        untitledStory: "Sem título",
-        storyTitleFallback: "Estória",
-        studentsLabel: "Alunos",
-        paramsLabel: "Parâmetros",
-        modeFinished: "Trajetórias finalizadas",
-        modeUnfinished: "Trajetórias não finalizadas",
-        inWord: "em",
-        routesCountSuffix: "rotas",
-        noRoutesMode: "Sem rotas suficientes em",
-        ariaJourneyIn: "Jornada dos estudantes em",
-        ariaRouteWithStudents: "Trajetória com",
-        studentsWord: "estudantes",
-        emptyUnfinished: "Nenhuma trajetória não finalizada atende aos filtros atuais para",
-        emptyFinished: "Nenhuma trajetória finalizada atende aos filtros atuais para",
-        showingRoutes: "Mostrando",
-        ofRoutes: "de",
-        dragHint: "Arraste para definir a rota padrão",
-        event_resource_vis: "Vis. de recursos",
-        event_forum_vis: "Fórum",
-        event_forum_participation: "Part. fórum",
-        event_assignment_vis: "Vis. da atividade",
-        event_assignment_try: "Tentativa",
-        event_assignment_sub: "Entrega"
-    },
-    en: {
-        appTitle: "Dataviz Dashboard - Student Journey",
-        kicker: "Interactive analysis",
-        chartPrompt: "How do students move through the activity?",
-        activity: "Activity",
-        minVolumePrefix: "Routes with min.",
-        minVolumeSuffix: "student(s)",
-        selectActivityAria: "Select activity",
-        minVolumeAria: "Minimum student volume",
-        finishedRoutes: "Completed trajectories",
-        unfinishedRoutes: "Unfinished trajectories",
-        panelTitle: "Activity stories",
-        panelLoading: "Loading stories...",
-        noStories: "No stories were returned for this activity.",
-        categoryDeadline: "Deadlines and urgency",
-        categoryPrep: "Preparation and path",
-        categoryBottleneck: "Conversion bottlenecks",
-        categorySocial: "Forum and social engagement",
-        categoryRhythm: "Study rhythm",
-        categoryProfile: "Behavioral profiles",
-        categoryOther: "Other narratives",
-        untitledStory: "Untitled",
-        storyTitleFallback: "Story",
-        studentsLabel: "Students",
-        paramsLabel: "Parameters",
-        modeFinished: "Completed trajectories",
-        modeUnfinished: "Unfinished trajectories",
-        inWord: "in",
-        routesCountSuffix: "routes",
-        noRoutesMode: "No routes match filters in",
-        ariaJourneyIn: "Student journey in",
-        ariaRouteWithStudents: "Trajectory with",
-        studentsWord: "students",
-        emptyUnfinished: "No unfinished trajectory matches current filters for",
-        emptyFinished: "No completed trajectory matches current filters for",
-        showingRoutes: "Showing",
-        ofRoutes: "of",
-        dragHint: "Drag to define default route",
-        event_resource_vis: "Resource view",
-        event_forum_vis: "Forum",
-        event_forum_participation: "Forum participation",
-        event_assignment_vis: "Activity view",
-        event_assignment_try: "Attempt",
-        event_assignment_sub: "Submission"
-    }
-};
-
-const DashboardTheme = {
-    system: {
-        bgOverlay: "rgba(248, 250, 252, 0.98)",
-        bgSurface: "#f8fafc",
-        bgWhite: "#ffffff",
-        borderSoft: "#dbe3ed",
-        borderMuted: "#cbd5e1",
-        borderStrong: "#94a3b8",
-        textMain: "#1f2937",
-        textSoft: "#64748b",
-        textStrong: "#334155",
-        textEmphasis: "#475569",
-        contextLine: "#94a3b8",
-        neutralHighlight: "#475569",
-        axisGrid: "#e2e8f0",
-        zebraStripe: "rgba(0, 0, 0, 0.03)",
-        selectionFallback: "#2563eb",
-        terminalAlert: "#ef4444",
-        dangerText: "#c44",
-        dropShadowSoft: "0 12px 28px rgba(15, 23, 42, 0.14)",
-        dropShadowRoute: "drop-shadow(0 0 4px rgba(0,0,0,0.12))",
-        pillBg: "rgba(248, 250, 252, 0.94)"
-    },
-    status: {
-        risk: {
-            strong: "#c44",
-            soft: "rgba(196, 68, 68, 0.12)"
-        },
-        attention: {
-            strong: "#b46f12",
-            stroke: "#c58a1a",
-            soft: "rgba(180, 111, 18, 0.12)"
-        },
-        good: {
-            strong: "#2f8f5b",
-            soft: "rgba(47, 143, 91, 0.12)"
-        }
-    },
-    events: {
-        resource_vis: "#e64a19",
-        forum_vis: "#ff94c2",
-        forum_participation: "#00bcd4",
-        assignment_vis: "#00897b",
-        assignment_try: "#819ca9",
-        assignment_sub: "#c0ca33"
-    },
-    opacities: {
-        declutter: 0.36,
-        baseRoute: 0.42,
-        highlight: 1,
-        yStripe: 0.03,
-        markerBoost: 0.26,
-        iconBoost: 0.22,
-        terminalMin: 0.3,
-        terminalDefault: 0.7,
-        hoverStrong: 0.95
-    }
-};
-
-function t(lang, key) {
-    return I18N[lang]?.[key] || I18N.pt[key] || key;
-}
-
 function getEventLabel(eventName, lang) {
     return t(lang, `event_${eventName}`);
 }
@@ -184,16 +30,6 @@ function getOrderedEvents(state) {
     const missing = EVENT_ORDER.filter((eventName) => !cleaned.includes(eventName));
     return [...cleaned, ...missing];
 }
-
-function handleSaveRouteOrder(newOrder) {
-    const payload = {
-        milestoneEvent: newOrder[0] || null,
-        defaultRoute: newOrder.slice()
-    };
-
-    console.log("[RouteOrder] Payload pronto para backend:", payload);
-}
-
 
 function ensureNarrativeTooltip(chartContainer) {
     let tooltip = chartContainer.select(".poc-narrative-tooltip");
@@ -304,11 +140,11 @@ function showNarrativeTooltip(tooltip, pointer, story, containerNode, lang) {
         .html(`
             <div style="display:grid; gap:6px;">
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:999px; background:${tone.soft}; border:1px solid ${tone.accent}33; color:${tone.accent}; font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase;">${escapeHtml(tone.label)}</span>
+                    <span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:999px; background:${tone.soft}; border:1px solid ${tone.accent}33; color:${tone.accent}; font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase;">${escapeHtml(t(lang, tone.labelKey))}</span>
                     <span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:999px; background:${DashboardTheme.system.bgSurface}; border:1px solid ${DashboardTheme.system.borderMuted}; color:${DashboardTheme.system.textStrong}; font-size:10px; font-weight:900;">${escapeHtml(story.id)}</span>
                 </div>
-                <div style="font-weight:900;">${escapeHtml(story.title)}</div>
-                <div>${escapeHtml(story.question)}</div>
+                <div style="font-weight:900;">${escapeHtml(tr(lang, story.title))}</div>
+                <div>${escapeHtml(tr(lang, story.question))}</div>
                 <div style="padding:6px 8px; border-radius:8px; background:${DashboardTheme.system.bgSurface}; border:1px solid ${DashboardTheme.system.borderSoft}; color:${DashboardTheme.system.textStrong};">${escapeHtml(t(lang, "studentsLabel"))}: <strong>${escapeHtml(String(affectedCount))}</strong> (${escapeHtml(affectedPctLabel)})</div>
                 ${parametersMarkup}
             </div>
@@ -419,10 +255,10 @@ function svgIconMarkup(iconName, className = "") {
     return `<svg class="${className}" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${EVENT_ICON[iconName] || ""}</svg>`;
 }
 
-function getStatusMarkup(hasSubmission) {
+function getStatusMarkup(hasSubmission, lang) {
     return hasSubmission
-        ? `<span class="poc-route-status is-finished">${svgIconMarkup("assignment_sub", "")}Trajetória finalizada</span>`
-        : `<span class="poc-route-status is-unfinished">${svgIconMarkup("assignment_try", "")}Trajetória não finalizada</span>`;
+    ? `<span class="poc-route-status is-finished">${svgIconMarkup("assignment_sub", "")}${escapeHtml(t(lang, "routeFinished"))}</span>`
+    : `<span class="poc-route-status is-unfinished">${svgIconMarkup("assignment_try", "")}${escapeHtml(t(lang, "routeUnfinished"))}</span>`;
 }
 
 function getEventChipMarkup(eventName, lang) {
@@ -639,9 +475,9 @@ const STORY_HIGHLIGHT_LABELS = {
 };
 
 const STORY_HIGHLIGHT_TONES = {
-    risk: { label: "Risco Alto", accent: DashboardTheme.status.risk.strong, soft: DashboardTheme.status.risk.soft },
-    good: { label: "Positiva", accent: DashboardTheme.status.good.strong, soft: DashboardTheme.status.good.soft },
-    attention: { label: "Atenção", accent: DashboardTheme.status.attention.strong, soft: DashboardTheme.status.attention.soft }
+    risk: { labelKey: "Risco Alto", accent: DashboardTheme.status.risk.strong, soft: DashboardTheme.status.risk.soft },
+    good: { labelKey: "Positiva", accent: DashboardTheme.status.good.strong, soft: DashboardTheme.status.good.soft },
+    attention: { labelKey: "Atenção", accent: DashboardTheme.status.attention.strong, soft: DashboardTheme.status.attention.soft }
 };
 
 const STORY_HIGHLIGHT_STROKES = {
@@ -663,7 +499,7 @@ function getStoryCategoryMeta(category, lang) {
     const meta = STORY_CATEGORY_META[category];
 
     if (!meta) {
-        return { label: category || t(lang, "categoryOther"), icon: "bulb" };
+        return { label: category ? tr(lang, category) : t(lang, "categoryOther"), icon: "bulb" };
     }
 
     return {
@@ -726,12 +562,12 @@ function renderStoryMenuPanel(detailPanelSelection, stories, selectedStoryId, on
                                                 type="button"
                                                 class="poc-story-item ${isActive ? "is-active" : ""}"
                                                 data-story-id="${escapeHtml(String(story.id))}"
-                                                title="${escapeHtml(story.title || t(lang, "storyTitleFallback"))}">
+                                                title="${escapeHtml(tr(lang, story.title || t(lang, "storyTitleFallback")))}">
                                                 <div class="poc-story-item__meta">
                                                     <span class="poc-story-item__id">${escapeHtml(String(story.id || "S"))}</span>
                                                     <span class="poc-story-item__badge">${escapeHtml(String(affectedCount))}</span>
                                                 </div>
-                                                <div class="poc-story-item__title">${escapeHtml(story.title || t(lang, "untitledStory"))}</div>
+                                                <div class="poc-story-item__title">${escapeHtml(tr(lang, story.title || t(lang, "untitledStory")))}</div>
                                             </button>
                                         `;
                                     }).join("")}
@@ -849,7 +685,53 @@ function applyUiTranslations(state) {
     }
 }
 
-function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, y, margin, innerHeight, lang, onReorder }) {
+function setTimelineLoadingOverlay(chartContainer, lang, isLoading) {
+    chartContainer.selectAll(".poc-loading-overlay").remove();
+
+    if (!isLoading) {
+        return;
+    }
+
+    chartContainer.style("position", "relative");
+
+    const overlay = chartContainer
+        .append("div")
+        .attr("class", "poc-loading-overlay")
+        .style("position", "absolute")
+        .style("inset", "0")
+        .style("display", "grid")
+        .style("place-items", "center")
+        .style("background", "rgba(248, 250, 252, 0.82)")
+        .style("z-index", "8")
+        .style("pointer-events", "all");
+
+    const card = overlay
+        .append("div")
+        .style("display", "inline-flex")
+        .style("align-items", "center")
+        .style("gap", "10px")
+        .style("padding", "12px 14px")
+        .style("border-radius", "12px")
+        .style("border", `1px solid ${DashboardTheme.system.borderMuted}`)
+        .style("background", DashboardTheme.system.bgWhite)
+        .style("box-shadow", DashboardTheme.system.dropShadowSoft)
+        .style("color", DashboardTheme.system.textMain)
+        .style("font-size", "13px")
+        .style("font-weight", "700");
+
+    card
+        .append("span")
+        .style("width", "14px")
+        .style("height", "14px")
+        .style("border-radius", "999px")
+        .style("border", `2px solid ${DashboardTheme.system.borderMuted}`)
+        .style("border-top-color", DashboardTheme.system.selectionFallback)
+        .style("animation", "poc-spin 0.8s linear infinite");
+
+    card.append("span").text(t(lang, "recalculatingStories"));
+}
+
+function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, y, margin, innerHeight, lang, onReorder, isRecalculating }) {
     chartContainer.selectAll(".poc-yorder-panel").remove();
 
     const panel = chartContainer
@@ -881,7 +763,7 @@ function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, y, margin, i
         const card = item
             .append("div")
             .attr("class", "poc-yorder-card")
-            .attr("draggable", "true")
+            .attr("draggable", isRecalculating ? "false" : "true")
             .attr("data-event", eventName)
             .attr("aria-label", getEventLabel(eventName, lang));
 
@@ -921,6 +803,11 @@ function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, y, margin, i
         })
         .on("drop", function (event) {
             event.preventDefault();
+
+            if (isRecalculating) {
+                return;
+            }
+
             const targetEvent = this.getAttribute("data-event");
 
             if (!draggingEvent || !targetEvent || draggingEvent === targetEvent) {
@@ -939,7 +826,9 @@ function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, y, margin, i
             nextOrder.splice(toIndex, 0, moved);
 
             if (nextOrder.join("|") !== eventsOrder.join("|")) {
-                onReorder(nextOrder);
+                Promise.resolve(onReorder(nextOrder)).catch((error) => {
+                    console.error("Erro ao recalcular timeline apos drag/drop:", error);
+                });
             }
         });
 }
@@ -956,7 +845,8 @@ function renderTrajectoryChart({
     stories,
     activityName,
     state,
-    onStateChange
+    onStateChange,
+    onEventsOrderChange
 }) {
     const lang = state.lang;
     const activeEventsOrder = getOrderedEvents(state);
@@ -1192,11 +1082,8 @@ function renderTrajectoryChart({
         margin,
         innerHeight,
         lang,
-        onReorder: (nextOrder) => {
-            state.eventsOrder = nextOrder;
-            handleSaveRouteOrder(nextOrder);
-            onStateChange();
-        }
+        isRecalculating: state.isRecalculating,
+        onReorder: onEventsOrderChange
     });
 
     root
@@ -1656,7 +1543,8 @@ async function renderStudentJourneyPoC() {
             activityIndex: 0,
             minVolume: 10,
             narrativeMode: "finished",
-            lang: "pt",
+            lang: "en",
+            isRecalculating: false,
             eventsOrder: DEFAULT_EVENTS_ORDER.slice(),
             selectedRouteKey: null,
             selectedStoryId: null,
@@ -1667,10 +1555,14 @@ async function renderStudentJourneyPoC() {
         let currentGroupedRoutes = [];
         let currentTimeline = dataStore.timelinesByQuizId[dataStore.quizList[0].id];
 
-        function getGroupedRoutesForCurrentActivity() {
+        function getSelectedActivity() {
             const parsedIndex = Number(state.activityIndex);
             const safeIndex = Number.isNaN(parsedIndex) ? 0 : parsedIndex;
-            const selectedActivity = dataStore.quizList[safeIndex] || dataStore.quizList[0];
+            return dataStore.quizList[safeIndex] || dataStore.quizList[0];
+        }
+
+        function getGroupedRoutesForCurrentActivity() {
+            const selectedActivity = getSelectedActivity();
 
             currentTimeline = dataStore.timelinesByQuizId[selectedActivity.id];
 
@@ -1684,6 +1576,40 @@ async function renderStudentJourneyPoC() {
                 selectedActivity,
                 groupedRoutes: groupRoutes(userRoutes)
             };
+        }
+
+        async function recalculateTimelineForRouteOrder(nextOrder) {
+            const selectedActivity = getSelectedActivity();
+
+            state.eventsOrder = nextOrder.slice();
+            state.isRecalculating = true;
+            refreshView();
+
+            try {
+                const payload = buildTimelineRequest(selectedActivity.id, {
+                    story_params: {
+                        fluxo_ideal: nextOrder.slice(),
+                        evento_marco: nextOrder[0] || null
+                    }
+                });
+
+                const recalculatedTimeline = await fetchJson("/api/timeline", {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                });
+
+                dataStore.timelinesByQuizId[selectedActivity.id] = recalculatedTimeline;
+                currentTimeline = recalculatedTimeline;
+                state.selectedRouteKey = null;
+                state.selectedStoryId = null;
+                state.selectedRouteIndex = null;
+                state.pinnedCoords = null;
+            } catch (error) {
+                console.error("Falha ao recalcular timeline com nova ordem:", error);
+            } finally {
+                state.isRecalculating = false;
+                refreshView();
+            }
         }
 
         function refreshView() {
@@ -1702,6 +1628,15 @@ async function renderStudentJourneyPoC() {
 
             btnAll.attr("disabled", null);
             btnDrop.attr("disabled", null);
+            activitySelect.attr("disabled", null);
+            minVolumeSlider.attr("disabled", null);
+
+            if (state.isRecalculating) {
+                btnAll.attr("disabled", true);
+                btnDrop.attr("disabled", true);
+                activitySelect.attr("disabled", true);
+                minVolumeSlider.attr("disabled", true);
+            }
 
             renderTrajectoryChart({
                 chartContainer,
@@ -1714,14 +1649,17 @@ async function renderStudentJourneyPoC() {
                 stories: currentTimeline?.stories ?? [],
                 activityName,
                 state,
-                onStateChange: refreshView
+                onStateChange: refreshView,
+                onEventsOrderChange: recalculateTimelineForRouteOrder
             });
+
+            setTimelineLoadingOverlay(chartContainer, state.lang, state.isRecalculating);
 
             const maxVolume = d3.max(currentGroupedRoutes, (routeData) => routeData.totalStudents) || 1;
             minVolumeSlider
                 .attr("max", Math.max(10, Math.min(50, maxVolume)))
                 .property("value", state.minVolume)
-                .attr("disabled", null);
+                .attr("disabled", state.isRecalculating ? true : null);
             minVolumeLabel.html(`${escapeHtml(t(state.lang, "minVolumePrefix"))} <strong id="poc-min-volume-value">${escapeHtml(String(state.minVolume))}</strong> ${escapeHtml(t(state.lang, "minVolumeSuffix"))}`);
 
             const refreshedMinVolumeValue = d3.select("#poc-min-volume-value");
