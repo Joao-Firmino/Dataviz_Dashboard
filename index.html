@@ -11,7 +11,11 @@
 <body>
     <header class="app-header">
         <div class="app-header__brand">
-            <h1 class="app-header__title">Dataviz Dashboard - Jornada do Estudante</h1>
+            <h1 id="app-main-title" class="app-header__title" data-i18n="appTitle">Dataviz Dashboard - Jornada do Estudante</h1>
+            <div class="app-lang-toggle" role="group" aria-label="Language selector">
+                <button id="lang-pt" class="app-lang-toggle__btn is-active" type="button" data-lang="pt">PT</button>
+                <button id="lang-en" class="app-lang-toggle__btn" type="button" data-lang="en">EN</button>
+            </div>
         </div>
     </header>
 
@@ -19,24 +23,24 @@
         <section class="poc-shell" aria-label="Painel principal do dashboard independente">
             <div class="poc-header">
                 <div class="poc-header__copy">
-                    <p class="poc-kicker">Análise interativa</p>
-                    <h2 id="poc-title">Como os estudantes percorrem a atividade?</h2>
+                    <p id="poc-kicker" class="poc-kicker" data-i18n="kicker">Análise interativa</p>
+                    <h2 id="poc-title" data-i18n="chartPrompt">Como os estudantes percorrem a atividade?</h2>
                 </div>
 
                 <div class="poc-actions">
                     <label class="poc-control">
-                        <span>Atividade</span>
+                        <span id="poc-activity-label" data-i18n="activity">Atividade</span>
                         <select id="poc-activity-select" aria-label="Selecionar atividade"></select>
                     </label>
 
                     <label class="poc-volume-filter" for="poc-min-volume">
-                        <span>Rotas com mín. <strong id="poc-min-volume-value">10</strong> aluno(s)</span>
+                        <span id="poc-volume-label">Rotas com mín. <strong id="poc-min-volume-value">10</strong> aluno(s)</span>
                         <input type="range" id="poc-min-volume" min="1" max="50" value="10" aria-label="Volume mínimo de alunos">
                     </label>
 
                     <div class="poc-filter-group hidden" role="group" aria-label="Modo da visualização">
-                        <button id="btn-all" class="poc-filter-btn is-active" type="button">Trajetórias finalizadas</button>
-                        <button id="btn-drop" class="poc-filter-btn" type="button">Trajetórias não finalizadas</button>
+                        <button id="btn-all" class="poc-filter-btn is-active" type="button" data-i18n="finishedRoutes">Trajetórias finalizadas</button>
+                        <button id="btn-drop" class="poc-filter-btn" type="button" data-i18n="unfinishedRoutes">Trajetórias não finalizadas</button>
                     </div>
                 </div>
             </div>
@@ -50,11 +54,11 @@
                     <div class="poc-panel-header">
                         <h3 id="poc-panel-title">
                             <span class="poc-panel-title-marker" aria-hidden="true">!</span>
-                            <span>Estórias da atividade</span>
+                            <span id="poc-panel-title-text" data-i18n="panelTitle">Estórias da atividade</span>
                         </h3>
                     </div>
                     <div id="poc-panel-content" class="poc-panel-content">
-                        <p style="color: #999;">Carregando estórias...</p>
+                        <p id="poc-panel-loading" style="color: #999;">Carregando estórias...</p>
                     </div>
                 </aside>
             </div>

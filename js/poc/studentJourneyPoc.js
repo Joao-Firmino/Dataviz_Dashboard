@@ -9,6 +9,191 @@ const EVENT_ORDER = [
     "assignment_sub"
 ];
 
+const DEFAULT_EVENTS_ORDER = [
+    "assignment_sub",
+    "assignment_try",
+    "assignment_vis",
+    "forum_participation",
+    "forum_vis",
+    "resource_vis"
+];
+
+const I18N = {
+    pt: {
+        appTitle: "Dataviz Dashboard - Jornada do Estudante",
+        kicker: "Análise interativa",
+        chartPrompt: "Como os estudantes percorrem a atividade?",
+        activity: "Atividade",
+        minVolumePrefix: "Rotas com mín.",
+        minVolumeSuffix: "aluno(s)",
+        selectActivityAria: "Selecionar atividade",
+        minVolumeAria: "Volume mínimo de alunos",
+        finishedRoutes: "Trajetórias finalizadas",
+        unfinishedRoutes: "Trajetórias não finalizadas",
+        panelTitle: "Estórias da atividade",
+        panelLoading: "Carregando estórias...",
+        noStories: "Nenhuma estória foi retornada para esta atividade.",
+        categoryDeadline: "Prazo e urgência",
+        categoryPrep: "Preparação e percurso",
+        categoryBottleneck: "Gargalos de conversão",
+        categorySocial: "Fórum e engajamento social",
+        categoryRhythm: "Ritmo de estudo",
+        categoryProfile: "Perfis comportamentais",
+        categoryOther: "Outras narrativas",
+        untitledStory: "Sem título",
+        storyTitleFallback: "Estória",
+        studentsLabel: "Alunos",
+        paramsLabel: "Parâmetros",
+        modeFinished: "Trajetórias finalizadas",
+        modeUnfinished: "Trajetórias não finalizadas",
+        inWord: "em",
+        routesCountSuffix: "rotas",
+        noRoutesMode: "Sem rotas suficientes em",
+        ariaJourneyIn: "Jornada dos estudantes em",
+        ariaRouteWithStudents: "Trajetória com",
+        studentsWord: "estudantes",
+        emptyUnfinished: "Nenhuma trajetória não finalizada atende aos filtros atuais para",
+        emptyFinished: "Nenhuma trajetória finalizada atende aos filtros atuais para",
+        showingRoutes: "Mostrando",
+        ofRoutes: "de",
+        dragHint: "Arraste para definir a rota padrão",
+        event_resource_vis: "Vis. de recursos",
+        event_forum_vis: "Fórum",
+        event_forum_participation: "Part. fórum",
+        event_assignment_vis: "Vis. da atividade",
+        event_assignment_try: "Tentativa",
+        event_assignment_sub: "Entrega"
+    },
+    en: {
+        appTitle: "Dataviz Dashboard - Student Journey",
+        kicker: "Interactive analysis",
+        chartPrompt: "How do students move through the activity?",
+        activity: "Activity",
+        minVolumePrefix: "Routes with min.",
+        minVolumeSuffix: "student(s)",
+        selectActivityAria: "Select activity",
+        minVolumeAria: "Minimum student volume",
+        finishedRoutes: "Completed trajectories",
+        unfinishedRoutes: "Unfinished trajectories",
+        panelTitle: "Activity stories",
+        panelLoading: "Loading stories...",
+        noStories: "No stories were returned for this activity.",
+        categoryDeadline: "Deadlines and urgency",
+        categoryPrep: "Preparation and path",
+        categoryBottleneck: "Conversion bottlenecks",
+        categorySocial: "Forum and social engagement",
+        categoryRhythm: "Study rhythm",
+        categoryProfile: "Behavioral profiles",
+        categoryOther: "Other narratives",
+        untitledStory: "Untitled",
+        storyTitleFallback: "Story",
+        studentsLabel: "Students",
+        paramsLabel: "Parameters",
+        modeFinished: "Completed trajectories",
+        modeUnfinished: "Unfinished trajectories",
+        inWord: "in",
+        routesCountSuffix: "routes",
+        noRoutesMode: "No routes match filters in",
+        ariaJourneyIn: "Student journey in",
+        ariaRouteWithStudents: "Trajectory with",
+        studentsWord: "students",
+        emptyUnfinished: "No unfinished trajectory matches current filters for",
+        emptyFinished: "No completed trajectory matches current filters for",
+        showingRoutes: "Showing",
+        ofRoutes: "of",
+        dragHint: "Drag to define default route",
+        event_resource_vis: "Resource view",
+        event_forum_vis: "Forum",
+        event_forum_participation: "Forum participation",
+        event_assignment_vis: "Activity view",
+        event_assignment_try: "Attempt",
+        event_assignment_sub: "Submission"
+    }
+};
+
+const DashboardTheme = {
+    system: {
+        bgOverlay: "rgba(248, 250, 252, 0.98)",
+        bgSurface: "#f8fafc",
+        bgWhite: "#ffffff",
+        borderSoft: "#dbe3ed",
+        borderMuted: "#cbd5e1",
+        borderStrong: "#94a3b8",
+        textMain: "#1f2937",
+        textSoft: "#64748b",
+        textStrong: "#334155",
+        textEmphasis: "#475569",
+        contextLine: "#94a3b8",
+        neutralHighlight: "#475569",
+        axisGrid: "#e2e8f0",
+        zebraStripe: "rgba(0, 0, 0, 0.03)",
+        selectionFallback: "#2563eb",
+        terminalAlert: "#ef4444",
+        dangerText: "#c44",
+        dropShadowSoft: "0 12px 28px rgba(15, 23, 42, 0.14)",
+        dropShadowRoute: "drop-shadow(0 0 4px rgba(0,0,0,0.12))",
+        pillBg: "rgba(248, 250, 252, 0.94)"
+    },
+    status: {
+        risk: {
+            strong: "#c44",
+            soft: "rgba(196, 68, 68, 0.12)"
+        },
+        attention: {
+            strong: "#b46f12",
+            stroke: "#c58a1a",
+            soft: "rgba(180, 111, 18, 0.12)"
+        },
+        good: {
+            strong: "#2f8f5b",
+            soft: "rgba(47, 143, 91, 0.12)"
+        }
+    },
+    events: {
+        resource_vis: "#e64a19",
+        forum_vis: "#ff94c2",
+        forum_participation: "#00bcd4",
+        assignment_vis: "#00897b",
+        assignment_try: "#819ca9",
+        assignment_sub: "#c0ca33"
+    },
+    opacities: {
+        declutter: 0.36,
+        baseRoute: 0.42,
+        highlight: 1,
+        yStripe: 0.03,
+        markerBoost: 0.26,
+        iconBoost: 0.22,
+        terminalMin: 0.3,
+        terminalDefault: 0.7,
+        hoverStrong: 0.95
+    }
+};
+
+function t(lang, key) {
+    return I18N[lang]?.[key] || I18N.pt[key] || key;
+}
+
+function getEventLabel(eventName, lang) {
+    return t(lang, `event_${eventName}`);
+}
+
+function getOrderedEvents(state) {
+    const selected = Array.isArray(state?.eventsOrder) ? state.eventsOrder : [];
+    const cleaned = selected.filter((eventName) => EVENT_ORDER.includes(eventName));
+    const missing = EVENT_ORDER.filter((eventName) => !cleaned.includes(eventName));
+    return [...cleaned, ...missing];
+}
+
+function handleSaveRouteOrder(newOrder) {
+    const payload = {
+        milestoneEvent: newOrder[0] || null,
+        defaultRoute: newOrder.slice()
+    };
+
+    console.log("[RouteOrder] Payload pronto para backend:", payload);
+}
+
 
 function ensureNarrativeTooltip(chartContainer) {
     let tooltip = chartContainer.select(".poc-narrative-tooltip");
@@ -26,10 +211,10 @@ function ensureNarrativeTooltip(chartContainer) {
         .style("max-width", "340px")
         .style("padding", "10px 12px")
         .style("border-radius", "12px")
-        .style("background", "rgba(248, 250, 252, 0.98)")
-        .style("border", "1px solid rgba(100, 116, 139, 0.25)")
-        .style("box-shadow", "0 12px 28px rgba(15, 23, 42, 0.14)")
-        .style("color", "#1f2937")
+        .style("background", DashboardTheme.system.bgOverlay)
+        .style("border", `1px solid ${DashboardTheme.system.borderStrong}40`)
+        .style("box-shadow", DashboardTheme.system.dropShadowSoft)
+        .style("color", DashboardTheme.system.textMain)
         .style("font-size", "12px")
         .style("line-height", "1.45");
 }
@@ -76,7 +261,7 @@ function getStoryAffectedPercentage(story, affectedCount) {
     return null;
 }
 
-function showNarrativeTooltip(tooltip, pointer, story, containerNode) {
+function showNarrativeTooltip(tooltip, pointer, story, containerNode, lang) {
     if (!tooltip || !story) return;
 
     const containerWidth = containerNode?.clientWidth || 0;
@@ -99,12 +284,12 @@ function showNarrativeTooltip(tooltip, pointer, story, containerNode) {
     const parametersMarkup = parameterEntries.length
         ? `
             <div style="display:grid; gap:5px; margin-top:2px;">
-                <div style="font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#64748b;">Parâmetros</div>
+                <div style="font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:${DashboardTheme.system.textSoft};">${escapeHtml(t(lang, "paramsLabel"))}</div>
                 ${parameterEntries
                     .map(([key, value]) => `
                         <div style="display:grid; grid-template-columns:max-content minmax(0,1fr); gap:6px; align-items:start; font-size:11px;">
-                            <span style="font-weight:800; color:#475569;">${escapeHtml(key)}</span>
-                            <span style="color:#334155;">${escapeHtml(formatStoryParameterValue(value))}</span>
+                            <span style="font-weight:800; color:${DashboardTheme.system.textEmphasis};">${escapeHtml(key)}</span>
+                            <span style="color:${DashboardTheme.system.textStrong};">${escapeHtml(formatStoryParameterValue(value))}</span>
                         </div>
                     `)
                     .join("")}
@@ -120,11 +305,11 @@ function showNarrativeTooltip(tooltip, pointer, story, containerNode) {
             <div style="display:grid; gap:6px;">
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     <span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:999px; background:${tone.soft}; border:1px solid ${tone.accent}33; color:${tone.accent}; font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase;">${escapeHtml(tone.label)}</span>
-                    <span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:999px; background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; font-size:10px; font-weight:900;">${escapeHtml(story.id)}</span>
+                    <span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:999px; background:${DashboardTheme.system.bgSurface}; border:1px solid ${DashboardTheme.system.borderMuted}; color:${DashboardTheme.system.textStrong}; font-size:10px; font-weight:900;">${escapeHtml(story.id)}</span>
                 </div>
                 <div style="font-weight:900;">${escapeHtml(story.title)}</div>
                 <div>${escapeHtml(story.question)}</div>
-                <div style="padding:6px 8px; border-radius:8px; background:#f8fafc; border:1px solid #dbe3ed; color:#334155;">Alunos: <strong>${escapeHtml(String(affectedCount))}</strong> (${escapeHtml(affectedPctLabel)})</div>
+                <div style="padding:6px 8px; border-radius:8px; background:${DashboardTheme.system.bgSurface}; border:1px solid ${DashboardTheme.system.borderSoft}; color:${DashboardTheme.system.textStrong};">${escapeHtml(t(lang, "studentsLabel"))}: <strong>${escapeHtml(String(affectedCount))}</strong> (${escapeHtml(affectedPctLabel)})</div>
                 ${parametersMarkup}
             </div>
         `);
@@ -134,32 +319,21 @@ function hideNarrativeTooltip(tooltip) {
     if (!tooltip || tooltip.empty()) return;
     tooltip.style("display", "none");
 }
-const EVENT_LABEL = {
-    resource_vis: "Vis. de recursos",
-    forum_vis: "Forum",
-    forum_participation: "Part. forum",
-    assignment_vis: "Vis. da atividade",
-    assignment_try: "Tentativa",
-    assignment_sub: "Entrega"
-};
-
-const EVENT_COLOR = {
-    resource_vis: "#e64a19",
-    forum_vis: "#ff94c2",
-    forum_participation: "#00bcd4",
-    assignment_vis: "#00897b",
-    assignment_try: "#819ca9",
-    assignment_sub: "#c0ca33"
-};
+const EVENT_COLOR = DashboardTheme.events;
 
 const EVENT_FA_ICON = {
-    resource_vis: { className: "fa-folder-open", color: "#e64a19" },
-    forum_vis: { className: "fa-comments", color: "#ff94c2" },
-    forum_participation: { className: "fa-comment-medical", color: "#00bcd4" },
-    assignment_vis: { className: "fa-file-alt", color: "#00897b" },
-    assignment_try: { className: "fa-check", color: "#819ca9" },
-    assignment_sub: { className: "fa-check-double", color: "#c0ca33" }
+    resource_vis: { className: "fa-folder-open", color: DashboardTheme.events.resource_vis },
+    forum_vis: { className: "fa-comments", color: DashboardTheme.events.forum_vis },
+    forum_participation: { className: "fa-comment-medical", color: DashboardTheme.events.forum_participation },
+    assignment_vis: { className: "fa-file-alt", color: DashboardTheme.events.assignment_vis },
+    assignment_try: { className: "fa-check", color: DashboardTheme.events.assignment_try },
+    assignment_sub: { className: "fa-check-double", color: DashboardTheme.events.assignment_sub }
 };
+
+const ROUTE_BASE_STROKE = DashboardTheme.system.contextLine;
+const ROUTE_SELECTED_NEUTRAL_STROKE = DashboardTheme.system.neutralHighlight;
+const ROUTE_BASE_OPACITY = DashboardTheme.opacities.baseRoute;
+const ROUTE_DIMMED_OPACITY = DashboardTheme.opacities.declutter;
 
 function getEventIcon(eventName) {
     return EVENT_FA_ICON[eventName] || null;
@@ -185,6 +359,53 @@ function appendFaIcon(selection, iconInfo, size, options = {}) {
         .html(`<i class="fa-solid ${iconInfo.className}"></i>`);
 }
 
+function appendEventNodeGlyph(selection, eventName, options = {}) {
+    const {
+        x = 0,
+        y = 0,
+        circleRadius = 12,
+        iconSize = 16,
+        circleClass = "route-dot-bg",
+        iconClass = "route-dot",
+        iconInnerClass = "route-dot-icon",
+        opacity = 1
+    } = options;
+
+    const iconInfo = getEventIcon(eventName);
+    if (!iconInfo) return;
+
+    const eventColor = EVENT_COLOR[eventName] || DashboardTheme.system.textSoft;
+
+    selection
+        .append("circle")
+        .attr("class", circleClass)
+        .attr("cx", x)
+        .attr("cy", y)
+        .attr("r", circleRadius)
+        .attr("fill", DashboardTheme.system.bgWhite)
+        .attr("stroke", eventColor)
+        .attr("stroke-width", 2.8)
+        .style("pointer-events", "none")
+        .style("opacity", opacity);
+
+    const iconBoxSize = circleRadius * 1.5;
+    const iconBox = selection
+        .append("foreignObject")
+        .attr("class", iconClass)
+        .attr("x", x - (iconBoxSize / 2))
+        .attr("y", y - (iconBoxSize / 2))
+        .attr("width", iconBoxSize)
+        .attr("height", iconBoxSize)
+        .style("overflow", "visible")
+        .style("pointer-events", "none")
+        .style("opacity", opacity);
+
+    appendFaIcon(iconBox, iconInfo, iconSize, {
+        colorOverride: eventColor,
+        className: iconInnerClass
+    });
+}
+
 const EVENT_ICON = {
     resource_vis: '<path d="M7 4h8l4 4v12H7z"></path><path d="M15 4v4h4"></path>',
     forum_vis: '<path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v5A2.5 2.5 0 0 1 16.5 14H11l-4 3v-3H7.5A2.5 2.5 0 0 1 5 11.5z"></path>',
@@ -204,8 +425,8 @@ function getStatusMarkup(hasSubmission) {
         : `<span class="poc-route-status is-unfinished">${svgIconMarkup("assignment_try", "")}Trajetória não finalizada</span>`;
 }
 
-function getEventChipMarkup(eventName) {
-    const label = EVENT_LABEL[eventName] || eventName;
+function getEventChipMarkup(eventName, lang) {
+    const label = getEventLabel(eventName, lang) || eventName;
     return `<span class="poc-step-chip">${svgIconMarkup(eventName, "")}${label}</span>`;
 }
 
@@ -403,12 +624,12 @@ function buildNarrativeRoutes(groupedRoutes, narrativeMode, minVolume) {
 }
 
 const STORY_CATEGORY_META = {
-    deadline: { label: "Prazo e urgência", icon: "clock" },
-    prep: { label: "Preparação e percurso", icon: "route" },
-    bottleneck: { label: "Gargalos de conversão", icon: "user-exclamation" },
-    social: { label: "Fórum e engajamento social", icon: "comments" },
-    rhythm: { label: "Ritmo de estudo", icon: "running" },
-    profile: { label: "Perfis comportamentais", icon: "lightbulb" }
+    deadline: { labelKey: "categoryDeadline", icon: "clock" },
+    prep: { labelKey: "categoryPrep", icon: "route" },
+    bottleneck: { labelKey: "categoryBottleneck", icon: "user-exclamation" },
+    social: { labelKey: "categorySocial", icon: "comments" },
+    rhythm: { labelKey: "categoryRhythm", icon: "running" },
+    profile: { labelKey: "categoryProfile", icon: "lightbulb" }
 };
 
 const STORY_HIGHLIGHT_LABELS = {
@@ -418,15 +639,15 @@ const STORY_HIGHLIGHT_LABELS = {
 };
 
 const STORY_HIGHLIGHT_TONES = {
-    risk: { label: "Risco Alto", accent: "#c44", soft: "rgba(196, 68, 68, 0.12)" },
-    good: { label: "Positiva", accent: "#2f8f5b", soft: "rgba(47, 143, 91, 0.12)" },
-    attention: { label: "Atenção", accent: "#b46f12", soft: "rgba(180, 111, 18, 0.12)" }
+    risk: { label: "Risco Alto", accent: DashboardTheme.status.risk.strong, soft: DashboardTheme.status.risk.soft },
+    good: { label: "Positiva", accent: DashboardTheme.status.good.strong, soft: DashboardTheme.status.good.soft },
+    attention: { label: "Atenção", accent: DashboardTheme.status.attention.strong, soft: DashboardTheme.status.attention.soft }
 };
 
 const STORY_HIGHLIGHT_STROKES = {
-    risk: "#c44",
-    good: "#2f8f5b",
-    attention: "#c58a1a"
+    risk: DashboardTheme.status.risk.strong,
+    good: DashboardTheme.status.good.strong,
+    attention: DashboardTheme.status.attention.stroke
 };
 
 function escapeHtml(value) {
@@ -438,8 +659,17 @@ function escapeHtml(value) {
         .replaceAll("'", "&#39;");
 }
 
-function getStoryCategoryMeta(category) {
-    return STORY_CATEGORY_META[category] || { label: category || "Outras narrativas", icon: "bulb" };
+function getStoryCategoryMeta(category, lang) {
+    const meta = STORY_CATEGORY_META[category];
+
+    if (!meta) {
+        return { label: category || t(lang, "categoryOther"), icon: "bulb" };
+    }
+
+    return {
+        ...meta,
+        label: t(lang, meta.labelKey)
+    };
 }
 
 function groupStories(stories) {
@@ -463,13 +693,13 @@ function groupStories(stories) {
         });
 }
 
-function renderStoryMenuPanel(detailPanelSelection, stories, selectedStoryId, onStorySelect) {
+function renderStoryMenuPanel(detailPanelSelection, stories, selectedStoryId, onStorySelect, lang) {
     const grouped = groupStories(stories || []);
 
     if (!grouped.length) {
         detailPanelSelection.html(`
             <div class="poc-story-nav">
-                <p class="poc-story-nav__empty">Nenhuma estoria foi retornada para esta atividade.</p>
+                <p class="poc-story-nav__empty">${escapeHtml(t(lang, "noStories"))}</p>
             </div>
         `);
         return;
@@ -480,7 +710,7 @@ function renderStoryMenuPanel(detailPanelSelection, stories, selectedStoryId, on
             <div class="poc-story-list-scroll">
                 ${grouped
                     .map(({ category, items }) => {
-                        const categoryMeta = getStoryCategoryMeta(category);
+                        const categoryMeta = getStoryCategoryMeta(category, lang);
                         return `
                             <section class="poc-story-group" data-category="${escapeHtml(category)}">
                                 <div class="poc-story-group__title">
@@ -496,12 +726,12 @@ function renderStoryMenuPanel(detailPanelSelection, stories, selectedStoryId, on
                                                 type="button"
                                                 class="poc-story-item ${isActive ? "is-active" : ""}"
                                                 data-story-id="${escapeHtml(String(story.id))}"
-                                                title="${escapeHtml(story.title || "Estoria")}">
+                                                title="${escapeHtml(story.title || t(lang, "storyTitleFallback"))}">
                                                 <div class="poc-story-item__meta">
                                                     <span class="poc-story-item__id">${escapeHtml(String(story.id || "S"))}</span>
                                                     <span class="poc-story-item__badge">${escapeHtml(String(affectedCount))}</span>
                                                 </div>
-                                                <div class="poc-story-item__title">${escapeHtml(story.title || "Sem titulo")}</div>
+                                                <div class="poc-story-item__title">${escapeHtml(story.title || t(lang, "untitledStory"))}</div>
                                             </button>
                                         `;
                                     }).join("")}
@@ -590,6 +820,130 @@ function buildStoryRouteHighlights(stories, groupedRoutes) {
     };
 }
 
+function applyUiTranslations(state) {
+    const lang = state.lang;
+    document.documentElement.setAttribute("lang", lang === "en" ? "en" : "pt-BR");
+
+    document.querySelectorAll("[data-i18n]").forEach((node) => {
+        const key = node.getAttribute("data-i18n");
+        if (!key) return;
+        node.textContent = t(lang, key);
+    });
+
+    const activitySelectNode = document.getElementById("poc-activity-select");
+    if (activitySelectNode) {
+        activitySelectNode.setAttribute("aria-label", t(lang, "selectActivityAria"));
+    }
+
+    const minVolumeNode = document.getElementById("poc-min-volume");
+    if (minVolumeNode) {
+        minVolumeNode.setAttribute("aria-label", t(lang, "minVolumeAria"));
+    }
+
+    const langPt = document.getElementById("lang-pt");
+    const langEn = document.getElementById("lang-en");
+
+    if (langPt && langEn) {
+        langPt.classList.toggle("is-active", lang === "pt");
+        langEn.classList.toggle("is-active", lang === "en");
+    }
+}
+
+function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, y, margin, innerHeight, lang, onReorder }) {
+    chartContainer.selectAll(".poc-yorder-panel").remove();
+
+    const panel = chartContainer
+        .append("div")
+        .attr("class", "poc-yorder-panel")
+        .style("left", "10px")
+        .style("top", `${margin.top}px`)
+        .style("width", `${Math.max(136, margin.left - 26)}px`)
+        .style("height", `${innerHeight}px`);
+
+    panel
+        .append("p")
+        .attr("class", "poc-yorder-hint")
+        .text(t(lang, "dragHint"));
+
+    const list = panel.append("ul").attr("class", "poc-yorder-list");
+
+    let draggingEvent = null;
+
+    eventsOrder.forEach((eventName) => {
+        const yPos = y(eventName);
+        if (yPos == null) return;
+
+        const item = list
+            .append("li")
+            .attr("class", "poc-yorder-item")
+            .style("top", `${yPos}px`);
+
+        const card = item
+            .append("div")
+            .attr("class", "poc-yorder-card")
+            .attr("draggable", "true")
+            .attr("data-event", eventName)
+            .attr("aria-label", getEventLabel(eventName, lang));
+
+        const iconInfo = getEventIcon(eventName);
+        const iconColor = EVENT_COLOR[eventName] || DashboardTheme.system.textSoft;
+
+        card
+            .append("span")
+            .style("display", "inline-flex")
+            .style("align-items", "center")
+            .style("justify-content", "center")
+            .style("width", "22px")
+            .style("height", "22px")
+            .style("border-radius", "999px")
+            .style("background", DashboardTheme.system.bgWhite)
+            .style("border", `2px solid ${iconColor}`)
+            .style("flex", "0 0 auto")
+            .html(iconInfo ? `<i class="fa-solid ${iconInfo.className}" style="color:${iconColor};font-size:12px;"></i>` : "");
+
+        card
+            .append("span")
+            .attr("class", "poc-yorder-label")
+            .text(getEventLabel(eventName, lang));
+    });
+
+    panel.selectAll(".poc-yorder-card")
+        .on("dragstart", function () {
+            draggingEvent = this.getAttribute("data-event");
+            d3.select(this).classed("is-dragging", true);
+        })
+        .on("dragend", function () {
+            draggingEvent = null;
+            panel.selectAll(".poc-yorder-card").classed("is-dragging", false);
+        })
+        .on("dragover", function (event) {
+            event.preventDefault();
+        })
+        .on("drop", function (event) {
+            event.preventDefault();
+            const targetEvent = this.getAttribute("data-event");
+
+            if (!draggingEvent || !targetEvent || draggingEvent === targetEvent) {
+                return;
+            }
+
+            const nextOrder = eventsOrder.slice();
+            const fromIndex = nextOrder.indexOf(draggingEvent);
+            const toIndex = nextOrder.indexOf(targetEvent);
+
+            if (fromIndex < 0 || toIndex < 0) {
+                return;
+            }
+
+            const [moved] = nextOrder.splice(fromIndex, 1);
+            nextOrder.splice(toIndex, 0, moved);
+
+            if (nextOrder.join("|") !== eventsOrder.join("|")) {
+                onReorder(nextOrder);
+            }
+        });
+}
+
 
 function renderTrajectoryChart({
     chartContainer,
@@ -604,6 +958,9 @@ function renderTrajectoryChart({
     state,
     onStateChange
 }) {
+    const lang = state.lang;
+    const activeEventsOrder = getOrderedEvents(state);
+
     chartContainer.selectAll("svg, .poc-empty-overlay, .poc-render-note").remove();
     const narrativeTooltip = ensureNarrativeTooltip(chartContainer);
 
@@ -643,6 +1000,38 @@ function renderTrajectoryChart({
 
     const allVisibleKeys = new Set(routesForChart.map((d) => d.routeKey));
     const routeKeyToIndex = new Map(routesForChart.map((routeData, routeIndex) => [routeData.routeKey, routeIndex]));
+    const storyIdToVisibleRouteIndices = new Map();
+    const visibleStoryIds = new Set();
+
+    routesForChart.forEach((routeData, routeIndex) => {
+        const routeHighlight = highlightByRoute.get(routeData.routeKey);
+        if (!routeHighlight?.stories?.length) {
+            return;
+        }
+
+        routeHighlight.stories.forEach((story) => {
+            const storyId = String(story.id);
+            visibleStoryIds.add(storyId);
+
+            if (!storyIdToVisibleRouteIndices.has(storyId)) {
+                storyIdToVisibleRouteIndices.set(storyId, []);
+            }
+
+            const indices = storyIdToVisibleRouteIndices.get(storyId);
+            if (!indices.includes(routeIndex)) {
+                indices.push(routeIndex);
+            }
+        });
+    });
+
+    const storiesForSidebar = (stories || []).filter((story) => visibleStoryIds.has(String(story.id)));
+
+    if (state.selectedStoryId && !visibleStoryIds.has(String(state.selectedStoryId))) {
+        state.selectedStoryId = null;
+        state.selectedRouteKey = null;
+        state.selectedRouteIndex = null;
+        state.pinnedCoords = null;
+    }
 
     if (state.selectedRouteKey && routeKeyToIndex.has(state.selectedRouteKey)) {
         state.selectedRouteIndex = routeKeyToIndex.get(state.selectedRouteKey);
@@ -671,34 +1060,66 @@ function renderTrajectoryChart({
         }
     }
 
-    renderStoryMenuPanel(detailPanel, stories, state.selectedStoryId, (storyId) => {
-        if (String(state.selectedStoryId) === String(storyId)) {
+    renderStoryMenuPanel(detailPanel, storiesForSidebar, state.selectedStoryId, (storyId) => {
+        const normalizedStoryId = String(storyId);
+        const matchingRouteIndices = storyIdToVisibleRouteIndices.get(normalizedStoryId) || [];
+
+        if (!matchingRouteIndices.length) {
             state.selectedStoryId = null;
             state.selectedRouteKey = null;
             state.selectedRouteIndex = null;
             state.pinnedCoords = null;
-        } else {
-            state.selectedStoryId = String(storyId);
-            state.selectedRouteKey = storyIdToRouteKey.get(String(storyId))?.routeKey || null;
-            state.selectedRouteIndex = state.selectedRouteKey && routeKeyToIndex.has(state.selectedRouteKey)
-                ? routeKeyToIndex.get(state.selectedRouteKey)
-                : null;
-            state.pinnedCoords = null;
+            onStateChange();
+            return;
         }
 
+        const currentRouteIndex = Number.isInteger(state.selectedRouteIndex) ? state.selectedRouteIndex : null;
+        const currentMatchPosition = currentRouteIndex != null ? matchingRouteIndices.indexOf(currentRouteIndex) : -1;
+
+        if (currentMatchPosition === -1) {
+            const firstMatchIndex = matchingRouteIndices[0];
+            const firstMatchRoute = routesForChart[firstMatchIndex] || null;
+
+            state.selectedStoryId = normalizedStoryId;
+            state.selectedRouteIndex = firstMatchRoute ? firstMatchIndex : null;
+            state.selectedRouteKey = firstMatchRoute ? firstMatchRoute.routeKey : null;
+            state.pinnedCoords = null;
+            onStateChange();
+            return;
+        }
+
+        const isLastMatch = currentMatchPosition === matchingRouteIndices.length - 1;
+
+        if (isLastMatch) {
+            state.selectedStoryId = null;
+            state.selectedRouteKey = null;
+            state.selectedRouteIndex = null;
+            state.pinnedCoords = null;
+            onStateChange();
+            return;
+        }
+
+        const nextMatchIndex = matchingRouteIndices[currentMatchPosition + 1];
+        const nextMatchRoute = routesForChart[nextMatchIndex] || null;
+
+        state.selectedStoryId = normalizedStoryId;
+        state.selectedRouteIndex = nextMatchRoute ? nextMatchIndex : null;
+        state.selectedRouteKey = nextMatchRoute ? nextMatchRoute.routeKey : null;
+        state.pinnedCoords = null;
+
         onStateChange();
-    });
+    }, lang);
     detailPanelContainer.style("display", "block");
 
     const totalRoutes = routesToRender.length;
     const modeLabel = state.narrativeMode === "unfinished"
-        ? "Trajetórias não finalizadas"
-        : "Trajetórias finalizadas";
+        ? t(lang, "modeUnfinished")
+        : t(lang, "modeFinished");
 
     titleNode.text(
         totalRoutes > 0
-            ? `${modeLabel} em ${activityName} (${totalRoutes} rotas)`
-            : `Sem rotas suficientes em ${activityName}.`
+            ? `${modeLabel} ${t(lang, "inWord")} ${activityName} (${totalRoutes} ${t(lang, "routesCountSuffix")})`
+            : `${t(lang, "noRoutesMode")} ${activityName}.`
     );
     btnAll.classed("is-active", state.narrativeMode === "finished");
     btnDrop.classed("is-active", state.narrativeMode === "unfinished");
@@ -715,11 +1136,11 @@ function renderTrajectoryChart({
     const allSteps = d3.range(1, maxSteps + 1);
     const stepStride = isEmptyState ? 1 : Math.max(1, Math.ceil(allSteps.length / 12));
     const xTicks = isEmptyState ? d3.range(1, 7) : allSteps.filter((step, index) => index % stepStride === 0 || step === maxSteps);
-    const yDomain = EVENT_ORDER.map((eventName) => EVENT_LABEL[eventName]);
+    const yDomain = activeEventsOrder.slice();
     const denseMode = routesForChart.length > 120;
 
     const x = d3.scaleLinear().domain([1, maxSteps]).range([0, innerWidth]);
-    const y = d3.scalePoint().domain(yDomain).range([innerHeight, 0]).padding(0.5);
+    const y = d3.scalePoint().domain(yDomain).range([0, innerHeight]).padding(0.5);
     const widthScale = d3
         .scaleLinear()
         .domain(d3.extent(routesForChart, (d) => d.totalStudents))
@@ -732,7 +1153,7 @@ function renderTrajectoryChart({
         .attr("height", height)
         .attr("viewBox", `0 0 ${width} ${height}`)
         .attr("role", "img")
-        .attr("aria-label", `Jornada dos estudantes em ${activityName}`);
+        .attr("aria-label", `${t(lang, "ariaJourneyIn")} ${activityName}`);
 
     const root = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
@@ -764,6 +1185,20 @@ function renderTrajectoryChart({
         .slice()
         .sort((a, b) => d3.ascending(y(a) ?? 0, y(b) ?? 0));
 
+    renderInteractiveYAxisPanel({
+        chartContainer,
+        eventsOrder: yDomain,
+        y,
+        margin,
+        innerHeight,
+        lang,
+        onReorder: (nextOrder) => {
+            state.eventsOrder = nextOrder;
+            handleSaveRouteOrder(nextOrder);
+            onStateChange();
+        }
+    });
+
     root
         .append("g")
         .attr("class", "poc-row-stripes")
@@ -775,73 +1210,33 @@ function renderTrajectoryChart({
         .attr("y", (eventLabel) => (y(eventLabel) ?? 0) - (rowHeight / 2))
         .attr("width", innerWidth)
         .attr("height", rowHeight)
-        .attr("fill", (_, index) => (index % 2 === 0 ? "rgba(0, 0, 0, 0.03)" : "transparent"));
+        .attr("fill", (_, index) => (index % 2 === 0 ? DashboardTheme.system.zebraStripe : "transparent"));
 
     root
         .append("g")
         .attr("class", "y-grid")
         .call(d3.axisLeft(y).tickSize(-innerWidth).tickFormat(""))
         .call((axis) => axis.select(".domain").remove())
-        .call((axis) => axis.selectAll("line").attr("stroke", "#e2e8f0").attr("stroke-dasharray", "3 5"));
+        .call((axis) => axis.selectAll("line").attr("stroke", DashboardTheme.system.axisGrid).attr("stroke-dasharray", "3 5"));
 
     root
         .append("g")
         .attr("transform", `translate(0,${innerHeight})`)
         .call(d3.axisBottom(x).tickValues(xTicks).tickFormat((step) => `${step}`))
-        .call((axis) => axis.selectAll("text").attr("fill", "#64748b").style("font-size", "12px"))
-        .call((axis) => axis.select(".domain").attr("stroke", "#94a3b8"));
+        .call((axis) => axis.selectAll("text").attr("fill", DashboardTheme.system.textSoft).style("font-size", "12px"))
+        .call((axis) => axis.select(".domain").attr("stroke", DashboardTheme.system.borderStrong));
 
     const yAxis = root
         .append("g")
-        .call(d3.axisLeft(y).tickPadding(0).tickSize(6))
-        .call((axis) => axis.selectAll("text")
-            .attr("fill", "#475569")
-            .style("font-size", "12px")
-            .style("text-anchor", "start")
-            .attr("x", -130))
-        .call((axis) => axis.select(".domain").attr("stroke", "#94a3b8"));
+        .call(d3.axisLeft(y).tickPadding(0).tickSize(6).tickFormat(() => ""))
+        .call((axis) => axis.select(".domain").attr("stroke", DashboardTheme.system.borderStrong));
 
-    yAxis.selectAll(".tick").each(function (eventLabel) {
-        const eventName = EVENT_ORDER.find((name) => EVENT_LABEL[name] === eventLabel);
-        const iconInfo = eventName ? getEventIcon(eventName) : null;
-
-        if (!iconInfo) {
-            return;
-        }
-
-        const tick = d3.select(this);
-
-        tick
-            .insert("circle", ":first-child")
-            .attr("class", "poc-yaxis-icon-bg")
-            .attr("cx", -146)
-            .attr("cy", 0)
-            .attr("r", 12)
-            .attr("fill", "#ffffff")
-            .attr("stroke", EVENT_COLOR[eventName] || "#cbd5e1")
-            .attr("stroke-width", 2.8)
-            .style("pointer-events", "none");
-
-        const iconBox = tick
-            .insert("foreignObject", ":first-child")
-            .attr("class", "poc-yaxis-icon")
-            .attr("x", -155)
-            .attr("y", -9)
-            .attr("width", 18)
-            .attr("height", 18)
-            .style("overflow", "visible")
-            .style("pointer-events", "none");
-
-        appendFaIcon(iconBox, iconInfo, 16, {
-            colorOverride: EVENT_COLOR[eventName] || iconInfo.color,
-            className: "route-dot-icon"
-        });
-    });
+    yAxis.selectAll("text").remove();
 
     const lineGenerator = d3
         .line()
         .x((d) => x(d.step + 1))
-        .y((d) => y(EVENT_LABEL[d.event]))
+        .y((d) => y(d.event))
         .curve(d3.curveLinear);
 
     const routeGroup = root
@@ -858,8 +1253,8 @@ function renderTrajectoryChart({
         ? (stories || []).find((story) => String(story.id) === String(state.selectedStoryId)) || null
         : null;
     const selectedStorySemanticStroke = selectedStory
-        ? (STORY_HIGHLIGHT_STROKES[selectedStory.highlight] || "#2563eb")
-        : "#2563eb";
+        ? (STORY_HIGHLIGHT_STROKES[selectedStory.highlight] || DashboardTheme.system.selectionFallback)
+        : DashboardTheme.system.selectionFallback;
     let hoveredRouteKey = null;
 
     function hasPinnedStory() {
@@ -894,29 +1289,31 @@ function renderTrajectoryChart({
                 return selectedStorySemanticStroke;
             }
 
-            return "#cbd5e1";
+            return ROUTE_BASE_STROKE;
         }
 
         if (isPinnedRoute(routeData, routeIndex)) {
             return storyHighlight
-                ? (STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || "#2563eb")
-                : "#475569";
+                ? (STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || DashboardTheme.system.selectionFallback)
+                : ROUTE_SELECTED_NEUTRAL_STROKE;
         }
 
         if (state.selectedRouteKey) {
-            return "#cbd5e1";
+            return ROUTE_BASE_STROKE;
         }
 
         if (hoveredRouteKey && routeData.routeKey === hoveredRouteKey) {
-            return "#94a3b8";
+            return storyHighlight
+                ? (STORY_HIGHLIGHT_STROKES[storyHighlight.highlight] || DashboardTheme.system.selectionFallback)
+                : ROUTE_SELECTED_NEUTRAL_STROKE;
         }
 
-        return "#cbd5e1";
+        return ROUTE_BASE_STROKE;
     }
 
     function getRouteOpacity(routeData, routeIndex) {
         if (state.selectedStoryId) {
-            return state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex ? 1 : 0.25;
+            return state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex ? 1 : ROUTE_DIMMED_OPACITY;
         }
 
         if (isPinnedRoute(routeData, routeIndex)) {
@@ -924,14 +1321,14 @@ function renderTrajectoryChart({
         }
 
         if (state.selectedRouteKey) {
-            return denseMode ? 0.25 : 0.3;
+            return ROUTE_DIMMED_OPACITY;
         }
 
         if (hoveredRouteKey) {
-            return routeData.routeKey === hoveredRouteKey ? 0.95 : (denseMode ? 0.25 : 0.3);
+            return routeData.routeKey === hoveredRouteKey ? DashboardTheme.opacities.hoverStrong : ROUTE_DIMMED_OPACITY;
         }
 
-        return denseMode ? 0.25 : 0.3;
+        return denseMode ? ROUTE_DIMMED_OPACITY : ROUTE_BASE_OPACITY;
     }
 
     function getRouteStrokeWidth(routeData, routeIndex) {
@@ -974,21 +1371,21 @@ function renderTrajectoryChart({
 
             group
                 .selectAll(".route-dot")
-                .style("opacity", Math.min(1, routeOpacity + 0.22));
+                .style("opacity", Math.min(1, routeOpacity + DashboardTheme.opacities.iconBoost));
 
             group
                 .selectAll(".route-dot-bg")
-                .attr("stroke", (d) => EVENT_COLOR[d.event] || "#cbd5e1")
-                .style("opacity", Math.min(1, routeOpacity + 0.26));
+                .attr("stroke", (d) => EVENT_COLOR[d.event] || DashboardTheme.system.borderMuted)
+                .style("opacity", Math.min(1, routeOpacity + DashboardTheme.opacities.markerBoost));
 
             group
                 .selectAll(".route-dot-icon")
-                .style("color", (d) => EVENT_COLOR[d.event] || "#64748b");
+                .style("color", (d) => EVENT_COLOR[d.event] || DashboardTheme.system.textSoft);
 
             group
                 .select(".route-terminal")
-                .attr("stroke", isHighlighted(routeData, routeIndex) ? "#ef4444" : "#cbd5e1")
-                .attr("opacity", isHighlighted(routeData, routeIndex) ? 1 : Math.max(0.3, routeOpacity + 0.08));
+                .attr("stroke", isHighlighted(routeData, routeIndex) ? DashboardTheme.system.terminalAlert : DashboardTheme.system.borderMuted)
+                .attr("opacity", isHighlighted(routeData, routeIndex) ? DashboardTheme.opacities.highlight : Math.max(DashboardTheme.opacities.terminalMin, routeOpacity + 0.08));
         });
     }
 
@@ -1005,14 +1402,14 @@ function renderTrajectoryChart({
 
             return {
                 x: ((x(prev.step + 1) + x(curr.step + 1)) / 2) + dx,
-                y: ((y(EVENT_LABEL[prev.event]) + y(EVENT_LABEL[curr.event])) / 2) + dy
+                y: ((y(prev.event) + y(curr.event)) / 2) + dy
             };
         }
 
         const only = points[0];
         return {
             x: x(only.step + 1) + dx,
-            y: y(EVENT_LABEL[only.event]) + dy
+            y: y(only.event) + dy
         };
     }
 
@@ -1041,7 +1438,7 @@ function renderTrajectoryChart({
             .attr("class", "route-path")
             .attr("tabindex", 0)
             .attr("role", "button")
-            .attr("aria-label", `Trajetoria com ${routeData.totalStudents} estudantes`)
+            .attr("aria-label", `${t(lang, "ariaRouteWithStudents")} ${routeData.totalStudents} ${t(lang, "studentsWord")}`)
             .attr("d", lineGenerator(points))
             .attr("fill", "none")
             .attr("stroke-linecap", "round")
@@ -1049,18 +1446,18 @@ function renderTrajectoryChart({
             .attr("stroke", getRouteColor(routeData, routeIndex))
             .attr("opacity", getRouteOpacity(routeData, routeIndex))
             .attr("stroke-width", getRouteStrokeWidth(routeData, routeIndex))
-            .style("filter", storyHighlight ? "drop-shadow(0 0 4px rgba(0,0,0,0.12))" : "none")
+            .style("filter", storyHighlight ? DashboardTheme.system.dropShadowRoute : "none")
             .on("mouseover", (event) => {
                 hoveredRouteKey = routeData.routeKey;
                 applyRouteVisualState();
 
                 if (!hasPinnedStory() && storyHighlight && activeStoryWithMetrics) {
-                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node());
+                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node(), lang);
                 }
             })
             .on("mousemove", (event) => {
                 if (!hasPinnedStory() && storyHighlight && activeStoryWithMetrics) {
-                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node());
+                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node(), lang);
                 }
             })
             .on("mouseout", () => {
@@ -1094,7 +1491,8 @@ function renderTrajectoryChart({
                             ? [state.pinnedCoords.x, state.pinnedCoords.y]
                             : [storyMarkerPosition.x, storyMarkerPosition.y],
                         activeStoryWithMetrics,
-                        chartContainer.node()
+                        chartContainer.node(),
+                        lang
                     );
                 }
             })
@@ -1123,60 +1521,41 @@ function renderTrajectoryChart({
                 onStateChange();
             });
 
-        group
-            .selectAll(".route-dot-bg")
+        const routeNodes = group
+            .selectAll(".route-node")
             .data(points)
-            .join("circle")
-            .attr("class", "route-dot-bg")
-            .attr("cx", (d) => x(d.step + 1))
-            .attr("cy", (d) => y(EVENT_LABEL[d.event]))
-            .attr("r", 12)
-            .attr("fill", "#ffffff")
-            .attr("stroke", (d) => EVENT_COLOR[d.event] || "#cbd5e1")
-            .attr("stroke-width", 2.8)
-            .style("pointer-events", "none")
-            .style("opacity", Math.min(1, getRouteOpacity(routeData, routeIndex) + 0.26));
+            .join("g")
+            .attr("class", "route-node")
+            .style("pointer-events", "none");
 
-        group
-            .selectAll(".route-dot")
-            .data(points)
-            .join("foreignObject")
-            .attr("class", "route-dot")
-            .attr("x", (d) => x(d.step + 1) - 9)
-            .attr("y", (d) => y(EVENT_LABEL[d.event]) - 9)
-            .attr("width", 18)
-            .attr("height", 18)
-            .style("overflow", "visible")
-            .style("pointer-events", "none")
-            .style("opacity", Math.min(1, getRouteOpacity(routeData, routeIndex) + 0.22));
+        routeNodes.each(function (d) {
+            const node = d3.select(this);
+            node.selectAll("*").remove();
 
-        group
-            .selectAll(".route-dot")
-            .each(function (d) {
-                const iconInfo = getEventIcon(d.event);
-
-                if (!iconInfo) {
-                    return;
-                }
-
-                appendFaIcon(d3.select(this), iconInfo, 16, {
-                    colorOverride: EVENT_COLOR[d.event] || iconInfo.color,
-                    className: "route-dot-icon"
-                });
+            appendEventNodeGlyph(node, d.event, {
+                x: x(d.step + 1),
+                y: y(d.event),
+                circleRadius: 12,
+                iconSize: 16,
+                circleClass: "route-dot-bg",
+                iconClass: "route-dot",
+                iconInnerClass: "route-dot-icon",
+                opacity: Math.min(1, getRouteOpacity(routeData, routeIndex) + DashboardTheme.opacities.markerBoost)
             });
+        });
 
         if (!submissionPoint) {
             group
                 .append("circle")
                 .attr("class", "route-terminal")
                 .attr("cx", x(terminalPoint.step + 1))
-                .attr("cy", y(EVENT_LABEL[terminalPoint.event]))
+                .attr("cy", y(terminalPoint.event))
                 .attr("r", 6)
-                .attr("fill", "#ffffff")
-                .attr("stroke", "#cbd5e1")
+                .attr("fill", DashboardTheme.system.bgWhite)
+                .attr("stroke", DashboardTheme.system.borderMuted)
                 .attr("stroke-width", 2)
                 .attr("stroke-dasharray", "4 3")
-                .attr("opacity", isHighlighted(routeData, routeIndex) ? 1 : 0.7)
+                .attr("opacity", isHighlighted(routeData, routeIndex) ? DashboardTheme.opacities.highlight : DashboardTheme.opacities.terminalDefault)
                 .style("pointer-events", "none");
         }
 
@@ -1191,15 +1570,15 @@ function renderTrajectoryChart({
     applyRouteVisualState();
 
     if (selectedStoryForPinned && selectedStoryPointer) {
-        showNarrativeTooltip(narrativeTooltip, selectedStoryPointer, selectedStoryForPinned, chartContainer.node());
+        showNarrativeTooltip(narrativeTooltip, selectedStoryPointer, selectedStoryForPinned, chartContainer.node(), lang);
     } else {
         hideNarrativeTooltip(narrativeTooltip);
     }
 
     if (isEmptyState) {
         const emptyMessage = state.narrativeMode === "unfinished"
-            ? `Nenhuma trajetória não finalizada atende aos filtros atuais para ${activityName}.`
-            : `Nenhuma trajetória finalizada atende aos filtros atuais para ${activityName}.`;
+            ? `${t(lang, "emptyUnfinished")} ${activityName}.`
+            : `${t(lang, "emptyFinished")} ${activityName}.`;
 
         chartContainer
             .append("div")
@@ -1218,10 +1597,10 @@ function renderTrajectoryChart({
             .style("border-radius", "999px")
             .style("font-size", "11px")
             .style("font-weight", "700")
-            .style("background", "rgba(248, 250, 252, 0.94)")
-            .style("border", "1px solid #cbd5e1")
-            .style("color", "#475569")
-            .text(`Mostrando ${routesForChart.length} de ${routesToRender.length} rotas.`);
+            .style("background", DashboardTheme.system.pillBg)
+            .style("border", `1px solid ${DashboardTheme.system.borderMuted}`)
+            .style("color", DashboardTheme.system.textEmphasis)
+            .text(`${t(lang, "showingRoutes")} ${routesForChart.length} ${t(lang, "ofRoutes")} ${routesToRender.length} ${t(lang, "routesCountSuffix")}.`);
     }
 }
 
@@ -1230,22 +1609,28 @@ async function renderStudentJourneyPoC() {
     const activitySelect = d3.select("#poc-activity-select");
     const minVolumeSlider = d3.select("#poc-min-volume");
     const minVolumeValue = d3.select("#poc-min-volume-value");
+    const minVolumeLabel = d3.select("#poc-volume-label");
     const titleNode = d3.select("#poc-title");
     const detailPanel = d3.select("#poc-panel-content");
     const detailPanelContainer = d3.select("#poc-detail-panel");
     const btnAll = d3.select("#btn-all");
     const btnDrop = d3.select("#btn-drop");
+    const langPtBtn = d3.select("#lang-pt");
+    const langEnBtn = d3.select("#lang-en");
 
     if (
         chartContainer.empty() ||
         activitySelect.empty() ||
         minVolumeSlider.empty() ||
         minVolumeValue.empty() ||
+        minVolumeLabel.empty() ||
         titleNode.empty() ||
         detailPanel.empty() ||
         detailPanelContainer.empty() ||
         btnAll.empty() ||
-        btnDrop.empty()
+        btnDrop.empty() ||
+        langPtBtn.empty() ||
+        langEnBtn.empty()
     ) {
         console.error("POC elements not found");
         return;
@@ -1271,6 +1656,8 @@ async function renderStudentJourneyPoC() {
             activityIndex: 0,
             minVolume: 10,
             narrativeMode: "finished",
+            lang: "pt",
+            eventsOrder: DEFAULT_EVENTS_ORDER.slice(),
             selectedRouteKey: null,
             selectedStoryId: null,
             selectedRouteIndex: null,
@@ -1300,6 +1687,8 @@ async function renderStudentJourneyPoC() {
         }
 
         function refreshView() {
+            applyUiTranslations(state);
+
             const activityData = getGroupedRoutesForCurrentActivity();
             currentGroupedRoutes = activityData.groupedRoutes;
             const activityName = currentTimeline?.quiz?.name || activityData.selectedActivity.name;
@@ -1333,7 +1722,12 @@ async function renderStudentJourneyPoC() {
                 .attr("max", Math.max(10, Math.min(50, maxVolume)))
                 .property("value", state.minVolume)
                 .attr("disabled", null);
-            minVolumeValue.text(state.minVolume);
+            minVolumeLabel.html(`${escapeHtml(t(state.lang, "minVolumePrefix"))} <strong id="poc-min-volume-value">${escapeHtml(String(state.minVolume))}</strong> ${escapeHtml(t(state.lang, "minVolumeSuffix"))}`);
+
+            const refreshedMinVolumeValue = d3.select("#poc-min-volume-value");
+            if (!refreshedMinVolumeValue.empty()) {
+                refreshedMinVolumeValue.text(state.minVolume);
+            }
 
             detailPanelContainer.style("display", "block");
             activitySelect.property("value", String(state.activityIndex));
@@ -1352,7 +1746,6 @@ async function renderStudentJourneyPoC() {
 
         minVolumeSlider.on("input", function () {
             state.minVolume = Number(this.value) || 10;
-            minVolumeValue.text(state.minVolume);
             refreshView();
         });
 
@@ -1374,6 +1767,18 @@ async function renderStudentJourneyPoC() {
             refreshView();
         });
 
+        langPtBtn.on("click", () => {
+            if (state.lang === "pt") return;
+            state.lang = "pt";
+            refreshView();
+        });
+
+        langEnBtn.on("click", () => {
+            if (state.lang === "en") return;
+            state.lang = "en";
+            refreshView();
+        });
+
         refreshView();
     } catch (error) {
         console.error("Error rendering PoC:", error);
@@ -1381,7 +1786,7 @@ async function renderStudentJourneyPoC() {
         chartContainer
             .append("div")
             .style("padding", "24px")
-            .style("color", "#c44")
+            .style("color", DashboardTheme.system.dangerText)
             .text(`Erro ao carregar dados da PoC: ${error.message}`);
     }
 }

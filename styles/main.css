@@ -59,7 +59,42 @@ input {
 }
 
 .app-header__brand {
+    position: relative;
     width: min(1480px, calc(100% - 16px));
+}
+
+.app-lang-toggle {
+    position: absolute;
+    top: 2px;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(241, 245, 249, 0.14);
+    border: 1px solid rgba(203, 213, 225, 0.35);
+}
+
+.app-lang-toggle__btn {
+    border: 1px solid transparent;
+    border-radius: 999px;
+    min-width: 42px;
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    background: transparent;
+    color: #e2e8f0;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.app-lang-toggle__btn.is-active {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: rgba(148, 163, 184, 0.7);
 }
 
 .app-header__eyebrow {
@@ -288,6 +323,71 @@ input {
 
 .poc-yaxis-icon {
     font-size: 13px;
+}
+
+.poc-yorder-panel {
+    position: absolute;
+    z-index: 4;
+    pointer-events: none;
+}
+
+.poc-yorder-list {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.poc-yorder-item {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    transform: translateY(-50%);
+}
+
+.poc-yorder-card {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+    cursor: grab;
+}
+
+.poc-yorder-card:active {
+    cursor: grabbing;
+}
+
+.poc-yorder-card.is-dragging {
+    opacity: 0.6;
+    border-color: #94a3b8;
+}
+
+.poc-yorder-label {
+    font-size: 11px;
+    color: #334155;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: left;
+}
+
+.poc-yorder-hint {
+    margin: 0;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -24px;
+    font-size: 10px;
+    color: #64748b;
+    text-align: left;
+    pointer-events: none;
 }
 
 .route-dot {
@@ -749,9 +849,12 @@ body {
 }
 
 .app-header__eyebrow,
-.app-header__subtitle,
-.poc-kicker {
+.app-header__subtitle {
     color: #cbd5e1;
+}
+
+.poc-kicker {
+    color: #475569;
 }
 
 .poc-shell {
@@ -916,5 +1019,10 @@ body {
 
     .poc-dashboard-container {
         min-height: 460px;
+    }
+
+    .app-lang-toggle {
+        position: static;
+        margin-top: 8px;
     }
 }
