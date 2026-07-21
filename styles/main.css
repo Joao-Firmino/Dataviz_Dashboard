@@ -303,6 +303,18 @@ input {
     margin: 0 auto;
 }
 
+.outline-none,
+.outline-none:focus,
+.outline-none:focus-visible,
+.routes-layer .route-path,
+.routes-layer .route-path:focus,
+.routes-layer .route-path:focus-visible,
+.routes-layer .route-group,
+.routes-layer .route-group:focus,
+.routes-layer .route-group:focus-visible {
+    outline: none !important;
+}
+
 @keyframes poc-spin {
     from {
         transform: rotate(0deg);

@@ -97,20 +97,42 @@ function getStoryAffectedPercentage(story, affectedCount) {
     return null;
 }
 
-function showNarrativeTooltip(tooltip, pointer, story, containerNode, lang) {
+function showNarrativeTooltip(tooltip, pointer, story, containerNode, lang, options = {}) {
     if (!tooltip || !story) return;
 
+    const { pinned = false } = options;
     const containerWidth = containerNode?.clientWidth || 0;
     const containerHeight = containerNode?.clientHeight || 0;
-    const tooltipWidth = 340;
-    const fallbackX = (pointer?.[0] ?? 0) + 16;
-    const fallbackY = (pointer?.[1] ?? 0) - 12;
-    const left = containerWidth > 0
-        ? Math.max(8, Math.min(fallbackX, containerWidth - tooltipWidth - 8))
-        : fallbackX;
-    const top = containerHeight > 0
-        ? Math.max(8, Math.min(fallbackY, containerHeight - 120))
-        : fallbackY;
+    const hoverTooltipWidth = 340;
+    const pinnedTooltipWidth = 320;
+    const pinnedTooltipHeight = 180;
+    const safeMargin = 20;
+    const minPadding = 8;
+
+    const hoverX = (pointer?.[0] ?? 0) + 15;
+    const hoverY = (pointer?.[1] ?? 0) + 15;
+
+    let left = hoverX;
+    let top = hoverY;
+
+    if (pinned) {
+        const targetX = containerWidth - pinnedTooltipWidth - safeMargin;
+        const targetY = containerHeight - pinnedTooltipHeight - safeMargin;
+
+        left = containerWidth > 0
+            ? Math.max(minPadding, Math.min(targetX, containerWidth - minPadding))
+            : Math.max(minPadding, targetX);
+        top = containerHeight > 0
+            ? Math.max(minPadding, Math.min(targetY, containerHeight - minPadding))
+            : Math.max(minPadding, targetY);
+    } else {
+        left = containerWidth > 0
+            ? Math.max(minPadding, Math.min(hoverX, containerWidth - hoverTooltipWidth - minPadding))
+            : hoverX;
+        top = containerHeight > 0
+            ? Math.max(minPadding, Math.min(hoverY, containerHeight - pinnedTooltipHeight - minPadding))
+            : hoverY;
+    }
 
     const tone = STORY_HIGHLIGHT_TONES[story.highlight] || STORY_HIGHLIGHT_TONES.attention;
     const affectedCount = getStoryAffectedCount(story);
@@ -137,6 +159,7 @@ function showNarrativeTooltip(tooltip, pointer, story, containerNode, lang) {
         .style("display", "block")
         .style("left", `${left}px`)
         .style("top", `${top}px`)
+        .style("transition", pinned ? "left 260ms ease, top 260ms ease, opacity 180ms ease" : "none")
         .html(`
             <div style="display:grid; gap:6px;">
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -915,8 +938,18 @@ function renderTrajectoryChart({
     });
 
     const storiesForSidebar = (stories || []).filter((story) => visibleStoryIds.has(String(story.id)));
+    const selectedStoryRouteIndices = state.selectedStoryId
+        ? new Set(storyIdToVisibleRouteIndices.get(String(state.selectedStoryId)) || [])
+        : new Set();
 
     if (state.selectedStoryId && !visibleStoryIds.has(String(state.selectedStoryId))) {
+        state.selectedStoryId = null;
+        state.selectedRouteKey = null;
+        state.selectedRouteIndex = null;
+        state.pinnedCoords = null;
+    }
+
+    if (state.selectedStoryId && !selectedStoryRouteIndices.size) {
         state.selectedStoryId = null;
         state.selectedRouteKey = null;
         state.selectedRouteIndex = null;
@@ -963,24 +996,7 @@ function renderTrajectoryChart({
             return;
         }
 
-        const currentRouteIndex = Number.isInteger(state.selectedRouteIndex) ? state.selectedRouteIndex : null;
-        const currentMatchPosition = currentRouteIndex != null ? matchingRouteIndices.indexOf(currentRouteIndex) : -1;
-
-        if (currentMatchPosition === -1) {
-            const firstMatchIndex = matchingRouteIndices[0];
-            const firstMatchRoute = routesForChart[firstMatchIndex] || null;
-
-            state.selectedStoryId = normalizedStoryId;
-            state.selectedRouteIndex = firstMatchRoute ? firstMatchIndex : null;
-            state.selectedRouteKey = firstMatchRoute ? firstMatchRoute.routeKey : null;
-            state.pinnedCoords = null;
-            onStateChange();
-            return;
-        }
-
-        const isLastMatch = currentMatchPosition === matchingRouteIndices.length - 1;
-
-        if (isLastMatch) {
+        if (state.selectedStoryId === normalizedStoryId) {
             state.selectedStoryId = null;
             state.selectedRouteKey = null;
             state.selectedRouteIndex = null;
@@ -989,12 +1005,12 @@ function renderTrajectoryChart({
             return;
         }
 
-        const nextMatchIndex = matchingRouteIndices[currentMatchPosition + 1];
-        const nextMatchRoute = routesForChart[nextMatchIndex] || null;
+        const firstMatchIndex = matchingRouteIndices[0];
+        const firstMatchRoute = routesForChart[firstMatchIndex] || null;
 
         state.selectedStoryId = normalizedStoryId;
-        state.selectedRouteIndex = nextMatchRoute ? nextMatchIndex : null;
-        state.selectedRouteKey = nextMatchRoute ? nextMatchRoute.routeKey : null;
+        state.selectedRouteIndex = firstMatchRoute ? firstMatchIndex : null;
+        state.selectedRouteKey = firstMatchRoute ? firstMatchRoute.routeKey : null;
         state.pinnedCoords = null;
 
         onStateChange();
@@ -1132,7 +1148,7 @@ function renderTrajectoryChart({
         .selectAll(".route-group")
         .data(routesForChart, (d) => d.routeKey)
         .join("g")
-        .attr("class", "route-group");
+        .attr("class", "route-group outline-none");
 
     const selectedRouteIndex = Number.isInteger(state.selectedRouteIndex) ? state.selectedRouteIndex : null;
     const selectedRoute = selectedRouteIndex != null ? routesForChart[selectedRouteIndex] || null : null;
@@ -1143,14 +1159,27 @@ function renderTrajectoryChart({
         ? (STORY_HIGHLIGHT_STROKES[selectedStory.highlight] || DashboardTheme.system.selectionFallback)
         : DashboardTheme.system.selectionFallback;
     let hoveredRouteKey = null;
+    let isPinningInProgress = false;
 
     function hasPinnedStory() {
         return Boolean(state.selectedStoryId && state.selectedRouteIndex != null);
     }
 
+    function hasPinnedSelection() {
+        return Boolean(state.selectedRouteIndex != null);
+    }
+
+    function isTooltipLocked() {
+        return hasPinnedStory() || hasPinnedSelection() || isPinningInProgress;
+    }
+
+    function isStoryRouteHighlighted(routeIndex) {
+        return Boolean(state.selectedStoryId && selectedStoryRouteIndices.has(routeIndex));
+    }
+
     function isHighlighted(routeData, routeIndex) {
         if (state.selectedStoryId) {
-            return state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
+            return isStoryRouteHighlighted(routeIndex);
         }
 
         if (hoveredRouteKey && !state.selectedRouteKey) {
@@ -1172,7 +1201,7 @@ function renderTrajectoryChart({
         const storyHighlight = highlightByRoute.get(routeData.routeKey);
 
         if (state.selectedStoryId) {
-            if (state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex) {
+            if (isStoryRouteHighlighted(routeIndex)) {
                 return selectedStorySemanticStroke;
             }
 
@@ -1200,7 +1229,7 @@ function renderTrajectoryChart({
 
     function getRouteOpacity(routeData, routeIndex) {
         if (state.selectedStoryId) {
-            return state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex ? 1 : ROUTE_DIMMED_OPACITY;
+            return isStoryRouteHighlighted(routeIndex) ? 1 : ROUTE_DIMMED_OPACITY;
         }
 
         if (isPinnedRoute(routeData, routeIndex)) {
@@ -1222,7 +1251,7 @@ function renderTrajectoryChart({
         const storyHighlight = highlightByRoute.get(routeData.routeKey);
         const baseWidth = widthScale(routeData.totalStudents);
 
-        if (state.selectedStoryId && state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex) {
+        if (isStoryRouteHighlighted(routeIndex)) {
             return Math.max(baseWidth + 1.6, 4.2);
         }
 
@@ -1278,6 +1307,11 @@ function renderTrajectoryChart({
 
     let selectedStoryForPinned = null;
     let selectedStoryPointer = null;
+    const selectedStoryPrimaryRouteIndex = state.selectedStoryId
+        && Number.isInteger(state.selectedRouteIndex)
+        && selectedStoryRouteIndices.has(state.selectedRouteIndex)
+        ? state.selectedRouteIndex
+        : (selectedStoryRouteIndices.size ? Math.min(...selectedStoryRouteIndices) : null);
 
     function getStoryMarkerPosition(points) {
         const dx = 15;
@@ -1322,7 +1356,7 @@ function renderTrajectoryChart({
 
         group
             .append("path")
-            .attr("class", "route-path")
+            .attr("class", "route-path outline-none")
             .attr("tabindex", 0)
             .attr("role", "button")
             .attr("aria-label", `${t(lang, "ariaRouteWithStudents")} ${routeData.totalStudents} ${t(lang, "studentsWord")}`)
@@ -1334,20 +1368,30 @@ function renderTrajectoryChart({
             .attr("opacity", getRouteOpacity(routeData, routeIndex))
             .attr("stroke-width", getRouteStrokeWidth(routeData, routeIndex))
             .style("filter", storyHighlight ? DashboardTheme.system.dropShadowRoute : "none")
+            .style("outline", "none")
+            .style("cursor", "pointer")
             .on("mouseover", (event) => {
                 hoveredRouteKey = routeData.routeKey;
                 applyRouteVisualState();
+
+                if (!isTooltipLocked() && storyHighlight && activeStoryWithMetrics) {
+                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node(), lang);
+                }
+            })
+            .on("mousemove", (event) => {
+                if (isTooltipLocked()) {
+                    return;
+                }
 
                 if (!hasPinnedStory() && storyHighlight && activeStoryWithMetrics) {
                     showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node(), lang);
                 }
             })
-            .on("mousemove", (event) => {
-                if (!hasPinnedStory() && storyHighlight && activeStoryWithMetrics) {
-                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node(), lang);
+            .on("mouseleave", () => {
+                if (isTooltipLocked()) {
+                    return;
                 }
-            })
-            .on("mouseout", () => {
+
                 hoveredRouteKey = null;
                 applyRouteVisualState();
 
@@ -1357,6 +1401,7 @@ function renderTrajectoryChart({
             })
             .on("click", (event) => {
                 event.stopPropagation();
+                isPinningInProgress = true;
 
                 const [xCoord, yCoord] = d3.pointer(event, chartContainer.node());
 
@@ -1368,6 +1413,10 @@ function renderTrajectoryChart({
                 onStateChange();
             })
             .on("focus", () => {
+                if (isPinningInProgress || hoveredRouteKey) {
+                    return;
+                }
+
                 hoveredRouteKey = routeData.routeKey;
                 applyRouteVisualState();
 
@@ -1379,7 +1428,8 @@ function renderTrajectoryChart({
                             : [storyMarkerPosition.x, storyMarkerPosition.y],
                         activeStoryWithMetrics,
                         chartContainer.node(),
-                        lang
+                        lang,
+                        { pinned: hasPinnedStory() }
                     );
                 }
             })
@@ -1397,6 +1447,7 @@ function renderTrajectoryChart({
 
                 event.preventDefault();
                 event.stopPropagation();
+                isPinningInProgress = true;
 
                 const alreadySelected = state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
                 state.selectedRouteKey = alreadySelected ? null : routeData.routeKey;
@@ -1452,12 +1503,19 @@ function renderTrajectoryChart({
                 ? [state.pinnedCoords.x, state.pinnedCoords.y]
                 : null;
         }
+
+        if (state.selectedStoryId && selectedStoryPrimaryRouteIndex != null && routeIndex === selectedStoryPrimaryRouteIndex && storyHighlight && activeStoryWithMetrics) {
+            selectedStoryForPinned = activeStoryWithMetrics;
+            selectedStoryPointer = state.pinnedCoords
+                ? [state.pinnedCoords.x, state.pinnedCoords.y]
+                : [storyMarkerPosition.x, storyMarkerPosition.y];
+        }
     });
 
     applyRouteVisualState();
 
     if (selectedStoryForPinned && selectedStoryPointer) {
-        showNarrativeTooltip(narrativeTooltip, selectedStoryPointer, selectedStoryForPinned, chartContainer.node(), lang);
+        showNarrativeTooltip(narrativeTooltip, selectedStoryPointer, selectedStoryForPinned, chartContainer.node(), lang, { pinned: true });
     } else {
         hideNarrativeTooltip(narrativeTooltip);
     }
