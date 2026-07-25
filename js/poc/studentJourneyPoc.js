@@ -1,5 +1,5 @@
 import loadDashboardData, { buildTimelineRequest, fetchJson } from "./loadDashboardData.js";
-import { t, tr } from "./i18n.js";
+import { t, tr } from "./i18n.js?v=20260725212500";
 import { DashboardTheme } from "./colors.js";
 
 const EVENT_ORDER = [
@@ -24,11 +24,58 @@ function getEventLabel(eventName, lang) {
     return t(lang, `event_${eventName}`);
 }
 
+function getEventCustomization(state) {
+    const rawDisabled = Array.isArray(state?.disabledEvents) ? state.disabledEvents : [];
+    const disabledSet = new Set(rawDisabled.filter((eventName) => EVENT_ORDER.includes(eventName)));
+    const rawOrder = Array.isArray(state?.eventsOrder) ? state.eventsOrder : [];
+    const activeEvents = [];
+
+    rawOrder.forEach((eventName) => {
+        if (!EVENT_ORDER.includes(eventName) || disabledSet.has(eventName) || activeEvents.includes(eventName)) {
+            return;
+        }
+
+        activeEvents.push(eventName);
+    });
+
+    EVENT_ORDER.forEach((eventName) => {
+        if (!disabledSet.has(eventName) && !activeEvents.includes(eventName)) {
+            activeEvents.push(eventName);
+        }
+    });
+
+    const disabledEvents = [];
+
+    rawDisabled.forEach((eventName) => {
+        if (!EVENT_ORDER.includes(eventName) || activeEvents.includes(eventName) || disabledEvents.includes(eventName)) {
+            return;
+        }
+
+        disabledEvents.push(eventName);
+    });
+
+    EVENT_ORDER.forEach((eventName) => {
+        if (disabledSet.has(eventName) && !activeEvents.includes(eventName) && !disabledEvents.includes(eventName)) {
+            disabledEvents.push(eventName);
+        }
+    });
+
+    return { activeEvents, disabledEvents };
+}
+
 function getOrderedEvents(state) {
-    const selected = Array.isArray(state?.eventsOrder) ? state.eventsOrder : [];
-    const cleaned = selected.filter((eventName) => EVENT_ORDER.includes(eventName));
-    const missing = EVENT_ORDER.filter((eventName) => !cleaned.includes(eventName));
-    return [...cleaned, ...missing];
+    return getEventCustomization(state).activeEvents;
+}
+
+function getDisabledEvents(state) {
+    return getEventCustomization(state).disabledEvents;
+}
+
+function hasCustomizedEventConfiguration(state) {
+    const activeEvents = getOrderedEvents(state);
+    const disabledEvents = getDisabledEvents(state);
+
+    return disabledEvents.length > 0 || activeEvents.join("|") !== DEFAULT_EVENTS_ORDER.join("|");
 }
 
 function ensureNarrativeTooltip(chartContainer) {
@@ -410,17 +457,19 @@ function buildUserRoutes(logRows, eventMap, gradeByUser) {
     return userRoutes;
 }
 
-function buildUserRoutesFromTimeline(users) {
+function buildUserRoutesFromTimeline(users, allowedEvents = EVENT_ORDER) {
     if (!Array.isArray(users)) {
         return [];
     }
+
+    const allowedEventSet = new Set(allowedEvents.filter((eventName) => EVENT_ORDER.includes(eventName)));
 
     return users
         .map((user) => {
             const route = (user.events || [])
                 .map((eventData) => String(eventData.class || eventData.event || "").trim())
                 .map((eventName) => eventName.split("_SOME")[0].split("_MANY")[0].split("_START")[0].split("_END")[0])
-                .filter((eventName) => EVENT_ORDER.includes(eventName));
+                .filter((eventName) => allowedEventSet.has(eventName));
 
             if (!route.length) {
                 return null;
@@ -754,8 +803,8 @@ function setTimelineLoadingOverlay(chartContainer, lang, isLoading) {
     card.append("span").text(t(lang, "recalculatingStories"));
 }
 
-function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, y, margin, innerHeight, lang, onReorder, isRecalculating }) {
-    chartContainer.selectAll(".poc-yorder-panel").remove();
+function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, disabledEvents, y, margin, innerHeight, lang, onChange, isRecalculating }) {
+    chartContainer.selectAll(".poc-yorder-panel, .poc-yorder-disabled-zone--bottom").remove();
 
     const panel = chartContainer
         .append("div")
@@ -767,12 +816,201 @@ function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, y, margin, i
 
     panel
         .append("p")
+        .attr("class", "poc-yorder-heading")
+        .text(t(lang, "activeEventsTitle"));
+
+    const activeSection = panel
+        .append("div")
+        .attr("class", "poc-yorder-active-section")
+        .style("height", `${innerHeight}px`);
+
+    const list = activeSection
+        .append("ul")
+        .attr("class", "poc-yorder-list")
+        .attr("data-zone", "active");
+
+    panel
+        .append("p")
         .attr("class", "poc-yorder-hint")
         .text(t(lang, "dragHint"));
 
-    const list = panel.append("ul").attr("class", "poc-yorder-list");
+    const hasDisabledEvents = disabledEvents.length > 0;
+
+    const disabledSection = chartContainer
+        .append("div")
+        .attr("class", "poc-yorder-disabled-zone poc-yorder-disabled-zone--bottom")
+        .classed("is-populated", hasDisabledEvents)
+        .style("left", `${margin.left}px`)
+        .style("right", `${margin.right}px`)
+        .style("top", `${margin.top + innerHeight + 34}px`)
+        .attr("data-zone", "disabled");
+
+    disabledSection
+        .append("div")
+        .attr("class", "poc-yorder-disabled-zone__title")
+        .text(t(lang, "disabledEventsTitle"));
+
+    disabledSection
+        .append("div")
+        .attr("class", "poc-yorder-disabled-zone__hint")
+        .classed("is-hidden", hasDisabledEvents)
+        .text(disabledEvents.length ? t(lang, "disabledDropHint") : t(lang, "disabledEmptyHint"));
+
+    const disabledList = disabledSection
+        .append("div")
+        .attr("class", "poc-yorder-disabled-list");
 
     let draggingEvent = null;
+    let draggingFromZone = null;
+
+    function clearDropStates() {
+        chartContainer.selectAll(".poc-yorder-card").classed("is-dragging", false).classed("is-drop-target", false);
+        chartContainer
+            .selectAll(".poc-yorder-list, .poc-yorder-disabled-zone")
+            .classed("is-drop-target", false)
+            .classed("is-available-dropzone", false);
+    }
+
+    function commitEventChange(nextActiveEvents, nextDisabledEvents) {
+        if (!Array.isArray(nextActiveEvents) || nextActiveEvents.length === 0) {
+            return;
+        }
+
+        if (
+            nextActiveEvents.join("|") === eventsOrder.join("|")
+            && nextDisabledEvents.join("|") === disabledEvents.join("|")
+        ) {
+            return;
+        }
+
+        Promise.resolve(onChange({
+            activeEvents: nextActiveEvents,
+            disabledEvents: nextDisabledEvents
+        })).catch((error) => {
+            console.error("Erro ao recalcular timeline apos personalizacao dos eventos:", error);
+        });
+    }
+
+    function removeEvent(list, eventName) {
+        return list.filter((currentEvent) => currentEvent !== eventName);
+    }
+
+    function buildNextState(targetZone, targetEvent = null, targetPlacement = "before") {
+        if (!draggingEvent) {
+            return null;
+        }
+
+        if (targetEvent && targetEvent === draggingEvent) {
+            return null;
+        }
+
+        const activeEvents = eventsOrder.slice();
+        const inactiveEvents = disabledEvents.slice();
+        const isActiveSource = activeEvents.includes(draggingEvent);
+        const isDisabledSource = inactiveEvents.includes(draggingEvent);
+
+        if (!isActiveSource && !isDisabledSource) {
+            return null;
+        }
+
+        if (targetZone === "active") {
+            const nextActiveEvents = removeEvent(activeEvents, draggingEvent);
+            const nextDisabledEvents = removeEvent(inactiveEvents, draggingEvent);
+            const insertIndex = targetEvent ? nextActiveEvents.indexOf(targetEvent) : -1;
+
+            if (insertIndex >= 0) {
+                const normalizedIndex = targetPlacement === "after" ? insertIndex + 1 : insertIndex;
+                nextActiveEvents.splice(normalizedIndex, 0, draggingEvent);
+            } else {
+                nextActiveEvents.push(draggingEvent);
+            }
+
+            return { nextActiveEvents, nextDisabledEvents };
+        }
+
+        if (targetZone === "disabled") {
+            if (isActiveSource && activeEvents.length <= 1) {
+                return null;
+            }
+
+            const nextActiveEvents = removeEvent(activeEvents, draggingEvent);
+            const nextDisabledEvents = removeEvent(inactiveEvents, draggingEvent);
+            const insertIndex = targetEvent ? nextDisabledEvents.indexOf(targetEvent) : -1;
+
+            if (insertIndex >= 0) {
+                const normalizedIndex = targetPlacement === "after" ? insertIndex + 1 : insertIndex;
+                nextDisabledEvents.splice(normalizedIndex, 0, draggingEvent);
+            } else {
+                nextDisabledEvents.push(draggingEvent);
+            }
+
+            return { nextActiveEvents, nextDisabledEvents };
+        }
+
+        return null;
+    }
+
+    function attachDropTarget(selection, zone, targetEvent = null, options = {}) {
+        const { relativePlacement = false } = options;
+
+        selection
+            .on("dragenter", function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                d3.select(this).classed("is-drop-target", true);
+            })
+            .on("dragleave", function () {
+                d3.select(this).classed("is-drop-target", false);
+            })
+            .on("dragover", function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            })
+            .on("drop", function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                d3.select(this).classed("is-drop-target", false);
+
+                if (isRecalculating) {
+                    return;
+                }
+
+                let targetPlacement = "before";
+                let dropTargetEvent = targetEvent;
+
+                if (zone === "active" && !targetEvent) {
+                    const activeCards = Array.from(this.querySelectorAll('.poc-yorder-card[data-zone="active"]'));
+
+                    if (activeCards.length) {
+                        const pointerY = event.clientY;
+                        const nextCard = activeCards.find((card) => {
+                            const box = card.getBoundingClientRect();
+                            return pointerY <= box.top + (box.height / 2);
+                        });
+
+                        if (nextCard) {
+                            dropTargetEvent = nextCard.getAttribute("data-event");
+                            targetPlacement = "before";
+                        } else {
+                            dropTargetEvent = activeCards[activeCards.length - 1].getAttribute("data-event");
+                            targetPlacement = "after";
+                        }
+                    }
+                }
+
+                if (relativePlacement) {
+                    const box = this.getBoundingClientRect();
+                    targetPlacement = event.clientY > (box.top + (box.height / 2)) ? "after" : "before";
+                }
+
+                const nextState = buildNextState(zone, dropTargetEvent, targetPlacement);
+                if (!nextState) {
+                    return;
+                }
+
+                commitEventChange(nextState.nextActiveEvents, nextState.nextDisabledEvents);
+            });
+    }
 
     eventsOrder.forEach((eventName) => {
         const yPos = y(eventName);
@@ -788,6 +1026,7 @@ function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, y, margin, i
             .attr("class", "poc-yorder-card")
             .attr("draggable", isRecalculating ? "false" : "true")
             .attr("data-event", eventName)
+            .attr("data-zone", "active")
             .attr("aria-label", getEventLabel(eventName, lang));
 
         const iconInfo = getEventIcon(eventName);
@@ -810,50 +1049,64 @@ function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, y, margin, i
             .append("span")
             .attr("class", "poc-yorder-label")
             .text(getEventLabel(eventName, lang));
+
+        attachDropTarget(card, "active", eventName, { relativePlacement: true });
     });
 
-    panel.selectAll(".poc-yorder-card")
-        .on("dragstart", function () {
+    disabledEvents.forEach((eventName) => {
+        const card = disabledList
+            .append("div")
+            .attr("class", "poc-yorder-card poc-yorder-card--disabled")
+            .attr("draggable", isRecalculating ? "false" : "true")
+            .attr("data-event", eventName)
+            .attr("data-zone", "disabled")
+            .attr("aria-label", getEventLabel(eventName, lang));
+
+        const iconInfo = getEventIcon(eventName);
+        const iconColor = EVENT_COLOR[eventName] || DashboardTheme.system.textSoft;
+
+        card
+            .append("span")
+            .style("display", "inline-flex")
+            .style("align-items", "center")
+            .style("justify-content", "center")
+            .style("width", "22px")
+            .style("height", "22px")
+            .style("border-radius", "999px")
+            .style("background", DashboardTheme.system.bgWhite)
+            .style("border", `2px solid ${iconColor}`)
+            .style("flex", "0 0 auto")
+            .html(iconInfo ? `<i class="fa-solid ${iconInfo.className}" style="color:${iconColor};font-size:12px;"></i>` : "");
+
+        card
+            .append("span")
+            .attr("class", "poc-yorder-label")
+            .text(getEventLabel(eventName, lang));
+
+        attachDropTarget(card, "disabled", eventName, { relativePlacement: true });
+    });
+
+    chartContainer.selectAll(".poc-yorder-card")
+        .on("dragstart", function (event) {
             draggingEvent = this.getAttribute("data-event");
+            draggingFromZone = this.getAttribute("data-zone");
+            if (event.dataTransfer) {
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", draggingEvent || "");
+            }
             d3.select(this).classed("is-dragging", true);
+            chartContainer
+                .selectAll(`.poc-yorder-list[data-zone]:not([data-zone="${draggingFromZone}"]), .poc-yorder-disabled-zone[data-zone]:not([data-zone="${draggingFromZone}"])`)
+                .classed("is-available-dropzone", true);
         })
         .on("dragend", function () {
             draggingEvent = null;
-            panel.selectAll(".poc-yorder-card").classed("is-dragging", false);
-        })
-        .on("dragover", function (event) {
-            event.preventDefault();
-        })
-        .on("drop", function (event) {
-            event.preventDefault();
-
-            if (isRecalculating) {
-                return;
-            }
-
-            const targetEvent = this.getAttribute("data-event");
-
-            if (!draggingEvent || !targetEvent || draggingEvent === targetEvent) {
-                return;
-            }
-
-            const nextOrder = eventsOrder.slice();
-            const fromIndex = nextOrder.indexOf(draggingEvent);
-            const toIndex = nextOrder.indexOf(targetEvent);
-
-            if (fromIndex < 0 || toIndex < 0) {
-                return;
-            }
-
-            const [moved] = nextOrder.splice(fromIndex, 1);
-            nextOrder.splice(toIndex, 0, moved);
-
-            if (nextOrder.join("|") !== eventsOrder.join("|")) {
-                Promise.resolve(onReorder(nextOrder)).catch((error) => {
-                    console.error("Erro ao recalcular timeline apos drag/drop:", error);
-                });
-            }
+            draggingFromZone = null;
+            clearDropStates();
         });
+
+    attachDropTarget(list, "active");
+    attachDropTarget(disabledSection, "disabled");
 }
 
 
@@ -873,6 +1126,8 @@ function renderTrajectoryChart({
 }) {
     const lang = state.lang;
     const activeEventsOrder = getOrderedEvents(state);
+    const disabledEvents = getDisabledEvents(state);
+    const activeEventSet = new Set(activeEventsOrder);
 
     chartContainer.selectAll("svg, .poc-empty-overlay, .poc-render-note").remove();
     const narrativeTooltip = ensureNarrativeTooltip(chartContainer);
@@ -1035,7 +1290,7 @@ function renderTrajectoryChart({
     const width = chartContainer.node().clientWidth || 1100;
     const availableHeight = detailPanelContainer.node().clientHeight || chartContainer.node().clientHeight || 420;
     const height = Math.max(240, availableHeight);
-    const margin = { top: 16, right: 20, bottom: 48, left: 190 };
+    const margin = { top: 16, right: 20, bottom: 112, left: 190 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
     const maxSteps = isEmptyState ? 6 : (d3.max(groupedRoutes, (d) => d.route.length) || 1);
@@ -1094,12 +1349,13 @@ function renderTrajectoryChart({
     renderInteractiveYAxisPanel({
         chartContainer,
         eventsOrder: yDomain,
+        disabledEvents,
         y,
         margin,
         innerHeight,
         lang,
         isRecalculating: state.isRecalculating,
-        onReorder: onEventsOrderChange
+        onChange: onEventsOrderChange
     });
 
     root
@@ -1337,7 +1593,7 @@ function renderTrajectoryChart({
     routeGroup.each(function (routeData, routeIndex) {
         const group = d3.select(this);
         const points = routeData.route
-            .filter((eventName) => EVENT_ORDER.includes(eventName))
+            .filter((eventName) => activeEventSet.has(eventName))
             .map((eventName, step) => ({ event: eventName, step }));
         if (!points.length) {
             return;
@@ -1604,6 +1860,7 @@ async function renderStudentJourneyPoC() {
             lang: "en",
             isRecalculating: false,
             eventsOrder: DEFAULT_EVENTS_ORDER.slice(),
+            disabledEvents: [],
             selectedRouteKey: null,
             selectedStoryId: null,
             selectedRouteIndex: null,
@@ -1621,6 +1878,7 @@ async function renderStudentJourneyPoC() {
 
         function getGroupedRoutesForCurrentActivity() {
             const selectedActivity = getSelectedActivity();
+            const activeEvents = getOrderedEvents(state);
 
             currentTimeline = dataStore.timelinesByQuizId[selectedActivity.id];
 
@@ -1628,7 +1886,7 @@ async function renderStudentJourneyPoC() {
                 throw new Error(`Timeline não encontrada para a atividade ${selectedActivity.name}.`);
             }
 
-            const userRoutes = buildUserRoutesFromTimeline(currentTimeline.users);
+            const userRoutes = buildUserRoutesFromTimeline(currentTimeline.users, activeEvents);
 
             return {
                 selectedActivity,
@@ -1636,18 +1894,20 @@ async function renderStudentJourneyPoC() {
             };
         }
 
-        async function recalculateTimelineForRouteOrder(nextOrder) {
+        async function recalculateTimelineForEventConfig({ activeEvents, disabledEvents }) {
             const selectedActivity = getSelectedActivity();
 
-            state.eventsOrder = nextOrder.slice();
+            state.eventsOrder = activeEvents.slice();
+            state.disabledEvents = disabledEvents.slice();
             state.isRecalculating = true;
             refreshView();
 
             try {
                 const payload = buildTimelineRequest(selectedActivity.id, {
+                    event_classes: activeEvents.slice(),
                     story_params: {
-                        fluxo_ideal: nextOrder.slice(),
-                        evento_marco: nextOrder[0] || null
+                        fluxo_ideal: activeEvents.slice(),
+                        evento_marco: activeEvents[0] || null
                     }
                 });
 
@@ -1708,7 +1968,7 @@ async function renderStudentJourneyPoC() {
                 activityName,
                 state,
                 onStateChange: refreshView,
-                onEventsOrderChange: recalculateTimelineForRouteOrder
+                onEventsOrderChange: recalculateTimelineForEventConfig
             });
 
             setTimelineLoadingOverlay(chartContainer, state.lang, state.isRecalculating);
@@ -1737,6 +1997,15 @@ async function renderStudentJourneyPoC() {
             state.selectedStoryId = null;
             state.selectedRouteIndex = null;
             state.pinnedCoords = null;
+
+            if (hasCustomizedEventConfiguration(state)) {
+                recalculateTimelineForEventConfig({
+                    activeEvents: getOrderedEvents(state),
+                    disabledEvents: getDisabledEvents(state)
+                });
+                return;
+            }
+
             refreshView();
         });
 
