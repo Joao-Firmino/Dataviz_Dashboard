@@ -425,8 +425,11 @@ input {
 }
 
 .poc-yorder-heading {
-    margin: 0 0 8px;
-    font-size: 13px;
+    margin: 0;
+    position: absolute;
+    top: 0px;
+    left: 0;
+    font-size: 15px;
     font-weight: 800;
     letter-spacing: 0.02em;
     color: #334155;
