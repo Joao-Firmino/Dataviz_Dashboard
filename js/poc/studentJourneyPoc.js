@@ -1,6 +1,8 @@
 import loadDashboardData, { buildTimelineRequest, fetchJson } from "./loadDashboardData.js";
-import { t, tr } from "./i18n.js?v=20260725212500";
+import { t, tr } from "./i18n.js?v=20260731214500";
 import { DashboardTheme } from "./colors.js";
+import { renderStoryMenuPanel } from "./storyMenuPanel.js";
+import { formatStoryParameterValue, getStoryAffectedCount, getStoryAffectedPercentage } from "./storyMetrics.js";
 
 const EVENT_ORDER = [
     "resource_vis",
@@ -100,48 +102,6 @@ function ensureNarrativeTooltip(chartContainer) {
         .style("color", DashboardTheme.system.textMain)
         .style("font-size", "12px")
         .style("line-height", "1.45");
-}
-
-function formatStoryParameterValue(rawValue) {
-    if (Array.isArray(rawValue)) {
-        return rawValue.join(", ");
-    }
-
-    if (typeof rawValue === "object" && rawValue !== null) {
-        return Object.entries(rawValue)
-            .map(([key, value]) => `${key}: ${value}`)
-            .join(" | ");
-    }
-
-    return String(rawValue);
-}
-
-function getStoryAffectedCount(story) {
-    const fromCount = Number(story?.affected_count);
-    if (Number.isFinite(fromCount)) {
-        return fromCount;
-    }
-
-    if (Array.isArray(story?.affected_users)) {
-        return story.affected_users.length;
-    }
-
-    return 0;
-}
-
-function getStoryAffectedPercentage(story, affectedCount) {
-    const rawPct = Number(story?.affected_pct);
-
-    if (Number.isFinite(rawPct)) {
-        return rawPct <= 1 ? rawPct * 100 : rawPct;
-    }
-
-    const totalStudentsInScope = Number(story?.__totalStudentsInScope);
-    if (Number.isFinite(totalStudentsInScope) && totalStudentsInScope > 0) {
-        return (affectedCount / totalStudentsInScope) * 100;
-    }
-
-    return null;
 }
 
 function showNarrativeTooltip(tooltip, pointer, story, containerNode, lang, options = {}) {
@@ -531,15 +491,6 @@ function buildNarrativeRoutes(groupedRoutes, narrativeMode, minVolume) {
     return volumeFiltered;
 }
 
-const STORY_CATEGORY_META = {
-    deadline: { labelKey: "categoryDeadline", icon: "clock" },
-    prep: { labelKey: "categoryPrep", icon: "route" },
-    bottleneck: { labelKey: "categoryBottleneck", icon: "user-exclamation" },
-    social: { labelKey: "categorySocial", icon: "comments" },
-    rhythm: { labelKey: "categoryRhythm", icon: "running" },
-    profile: { labelKey: "categoryProfile", icon: "lightbulb" }
-};
-
 const STORY_HIGHLIGHT_LABELS = {
     risk: "Risco",
     good: "Positiva",
@@ -565,113 +516,6 @@ function escapeHtml(value) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#39;");
-}
-
-function getStoryCategoryMeta(category, lang) {
-    const meta = STORY_CATEGORY_META[category];
-
-    if (!meta) {
-        return { label: category ? tr(lang, category) : t(lang, "categoryOther"), icon: "bulb" };
-    }
-
-    return {
-        ...meta,
-        label: t(lang, meta.labelKey)
-    };
-}
-
-function groupStories(stories) {
-    const grouped = stories.reduce((acc, story) => {
-        const category = story.category || "other";
-        (acc[category] ??= []).push(story);
-        return acc;
-    }, {});
-
-    const categoryOrder = ["deadline", "prep", "bottleneck", "social", "rhythm", "profile"];
-
-    return Object.entries(grouped)
-        .map(([category, items]) => ({ category, items: items.slice().sort((a, b) => d3.descending(a.affected_count, b.affected_count)) }))
-        .sort((a, b) => {
-            const aIndex = categoryOrder.indexOf(a.category);
-            const bIndex = categoryOrder.indexOf(b.category);
-            if (aIndex === -1 && bIndex === -1) return d3.ascending(a.category, b.category);
-            if (aIndex === -1) return 1;
-            if (bIndex === -1) return -1;
-            return d3.ascending(aIndex, bIndex);
-        });
-}
-
-function renderStoryMenuPanel(detailPanelSelection, stories, selectedStoryId, onStorySelect, lang) {
-    const grouped = groupStories(stories || []);
-
-    if (!grouped.length) {
-        detailPanelSelection.html(`
-            <div class="poc-story-nav">
-                <p class="poc-story-nav__empty">${escapeHtml(t(lang, "noStories"))}</p>
-            </div>
-        `);
-        return;
-    }
-
-    const html = `
-        <div class="poc-story-nav">
-            <div class="poc-story-list-scroll">
-                ${grouped
-                    .map(({ category, items }) => {
-                        const categoryMeta = getStoryCategoryMeta(category, lang);
-                        return `
-                            <section class="poc-story-group" data-category="${escapeHtml(category)}">
-                                <div class="poc-story-group__title">
-                                    <span>${escapeHtml(categoryMeta.label)}</span>
-                                    <span class="poc-story-group__count">${items.length}</span>
-                                </div>
-                                <div class="poc-story-list">
-                                    ${items.map((story) => {
-                                        const isActive = selectedStoryId && String(story.id) === String(selectedStoryId);
-                                        const affectedCount = getStoryAffectedCount(story);
-                                        return `
-                                            <button
-                                                type="button"
-                                                class="poc-story-item ${isActive ? "is-active" : ""}"
-                                                data-story-id="${escapeHtml(String(story.id))}"
-                                                title="${escapeHtml(tr(lang, story.title || t(lang, "storyTitleFallback")))}">
-                                                <div class="poc-story-item__meta">
-                                                    <span class="poc-story-item__id">${escapeHtml(String(story.id || "S"))}</span>
-                                                    <span class="poc-story-item__badge">${escapeHtml(String(affectedCount))}</span>
-                                                </div>
-                                                <div class="poc-story-item__title">${escapeHtml(tr(lang, story.title || t(lang, "untitledStory")))}</div>
-                                            </button>
-                                        `;
-                                    }).join("")}
-                                </div>
-                            </section>
-                        `;
-                    })
-                    .join("")}
-            </div>
-        </div>
-    `;
-
-    detailPanelSelection.html(html);
-    detailPanelSelection.selectAll(".poc-story-item").on("click", function (event) {
-        event.preventDefault();
-        const storyId = this.getAttribute("data-story-id");
-        if (storyId) {
-            onStorySelect(storyId);
-        }
-    });
-
-    if (selectedStoryId) {
-        const activeCard = detailPanelSelection
-            .selectAll(".poc-story-item")
-            .filter(function () {
-                return this.getAttribute("data-story-id") === String(selectedStoryId);
-            })
-            .node();
-        if (activeCard && typeof activeCard.scrollIntoView === "function") {
-            activeCard.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-        }
-    }
 }
 
 function buildStoryRouteHighlights(stories, groupedRoutes) {
@@ -1119,6 +963,7 @@ function renderTrajectoryChart({
     btnDrop,
     groupedRoutes,
     stories,
+    storyFilterInfo,
     activityName,
     state,
     onStateChange,
@@ -1238,7 +1083,23 @@ function renderTrajectoryChart({
         }
     }
 
-    renderStoryMenuPanel(detailPanel, storiesForSidebar, state.selectedStoryId, (storyId) => {
+    // Regras ajustadas no painel lateral ficam temporariamente inativas.
+    // Para reativar, troque a linha abaixo para:
+    // const storyFilterInfoForPanel = storyFilterInfo;
+    const storyFilterInfoForPanel = null;
+
+    renderStoryMenuPanel({
+        detailPanelSelection: detailPanel,
+        stories: storiesForSidebar,
+        storyFilterInfo: storyFilterInfoForPanel,
+        selectedStoryId: state.selectedStoryId,
+        lang,
+        t,
+        tr,
+        getEventLabel,
+        getStoryAffectedCount,
+        enableFilterSummary: false,
+        onStorySelect: (storyId) => {
         const normalizedStoryId = String(storyId);
         const matchingRouteIndices = storyIdToVisibleRouteIndices.get(normalizedStoryId) || [];
 
@@ -1269,7 +1130,8 @@ function renderTrajectoryChart({
         state.pinnedCoords = null;
 
         onStateChange();
-    }, lang);
+    }
+    });
     detailPanelContainer.style("display", "block");
 
     const totalRoutes = routesToRender.length;
@@ -1857,7 +1719,7 @@ async function renderStudentJourneyPoC() {
             activityIndex: 0,
             minVolume: 10,
             narrativeMode: "finished",
-            lang: "en",
+            lang: "pt",
             isRecalculating: false,
             eventsOrder: DEFAULT_EVENTS_ORDER.slice(),
             disabledEvents: [],
@@ -1905,6 +1767,7 @@ async function renderStudentJourneyPoC() {
             try {
                 const payload = buildTimelineRequest(selectedActivity.id, {
                     event_classes: activeEvents.slice(),
+                    stories_respect_event_filter: true,
                     story_params: {
                         fluxo_ideal: activeEvents.slice(),
                         evento_marco: activeEvents[0] || null
@@ -1965,6 +1828,7 @@ async function renderStudentJourneyPoC() {
                 btnDrop,
                 groupedRoutes: currentGroupedRoutes,
                 stories: currentTimeline?.stories ?? [],
+                storyFilterInfo: currentTimeline?.story_filter_info ?? null,
                 activityName,
                 state,
                 onStateChange: refreshView,

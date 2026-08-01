@@ -55,6 +55,7 @@ function buildTimelineRequest(assignmentId, overrides = {}) {
         user_ids: overrides.user_ids ?? null,
         cities: overrides.cities ?? null,
         event_classes: overrides.event_classes ?? null,
+        stories_respect_event_filter: overrides.stories_respect_event_filter ?? false,
         segment: overrides.segment ?? null,
         scenario: scenarioOverride,
         thresholds: {
