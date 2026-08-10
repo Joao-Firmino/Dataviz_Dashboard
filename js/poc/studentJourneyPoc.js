@@ -1,5 +1,5 @@
 import loadDashboardData, { buildTimelineRequest, fetchJson } from "./loadDashboardData.js";
-import { t, tr } from "./i18n.js?v=20260731214500";
+import { t, tr } from "./i18n.js?v=20260810134500";
 import { DashboardTheme } from "./colors.js";
 import { renderStoryMenuPanel } from "./storyMenuPanel.js";
 import { formatStoryParameterValue, getStoryAffectedCount, getStoryAffectedPercentage } from "./storyMetrics.js";
@@ -21,6 +21,16 @@ const DEFAULT_EVENTS_ORDER = [
     "forum_vis",
     "resource_vis"
 ];
+
+const DEFAULT_API_BASE = "http://localhost:8000";
+
+function getConfiguredApiBase() {
+    if (typeof window !== "undefined" && window.DATAVIZ_API_URL) {
+        return window.DATAVIZ_API_URL;
+    }
+
+    return DEFAULT_API_BASE;
+}
 
 function getEventLabel(eventName, lang) {
     return t(lang, `event_${eventName}`);
@@ -1911,12 +1921,53 @@ async function renderStudentJourneyPoC() {
         refreshView();
     } catch (error) {
         console.error("Error rendering PoC:", error);
+
+        const lang = document.documentElement.getAttribute("lang")?.toLowerCase().startsWith("en") ? "en" : "pt";
+        const apiUrl = getConfiguredApiBase();
+        const technicalMessage = String(error?.message || "Failed to fetch");
+
+        applyUiTranslations({ lang });
+
         chartContainer.selectAll("*").remove();
         chartContainer
             .append("div")
-            .style("padding", "24px")
-            .style("color", DashboardTheme.system.dangerText)
-            .text(`Erro ao carregar dados da PoC: ${error.message}`);
+            .attr("class", "poc-fetch-error")
+            .html(`
+                <div class="poc-fetch-error__card" role="status" aria-live="polite">
+                    <div class="poc-fetch-error__icon" aria-hidden="true">
+                        <i class="fa-solid fa-plug-circle-xmark"></i>
+                    </div>
+                    <p class="poc-fetch-error__kicker">${escapeHtml(t(lang, "loadErrorKicker"))}</p>
+                    <h3 class="poc-fetch-error__title">${escapeHtml(t(lang, "loadErrorTitle"))}</h3>
+                    <p class="poc-fetch-error__desc">${escapeHtml(t(lang, "loadErrorDescription"))}</p>
+
+                    <div class="poc-fetch-error__meta">
+                        <span class="poc-fetch-error__meta-label">${escapeHtml(t(lang, "loadErrorApiLabel"))}</span>
+                        <span class="poc-fetch-error__meta-value">${escapeHtml(apiUrl)}</span>
+                    </div>
+
+                    <p class="poc-fetch-error__help">${escapeHtml(t(lang, "loadErrorHelp"))}</p>
+
+                    <details class="poc-fetch-error__details">
+                        <summary>${escapeHtml(t(lang, "loadErrorDetailsLabel"))}</summary>
+                        <pre>${escapeHtml(technicalMessage)}</pre>
+                    </details>
+
+                    <button class="poc-fetch-error__retry" type="button">${escapeHtml(t(lang, "loadErrorRetry"))}</button>
+                </div>
+            `);
+
+        chartContainer.select(".poc-fetch-error__retry").on("click", () => {
+            window.location.reload();
+        });
+
+        detailPanelContainer.style("display", "block");
+        detailPanel.html(`
+            <div class="poc-offline-side-note">
+                <h4>${escapeHtml(t(lang, "loadErrorPanelTitle"))}</h4>
+                <p>${escapeHtml(t(lang, "loadErrorPanelDescription"))}</p>
+            </div>
+        `);
     }
 }
 

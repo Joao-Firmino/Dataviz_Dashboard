@@ -1216,10 +1216,171 @@ body {
     box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
 }
 
+.poc-fetch-error {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background:
+        radial-gradient(circle at 12% 8%, rgba(59, 130, 246, 0.09), transparent 42%),
+        radial-gradient(circle at 88% 90%, rgba(239, 68, 68, 0.08), transparent 45%),
+        linear-gradient(180deg, rgba(248, 250, 252, 0.8), rgba(241, 245, 249, 0.92));
+}
+
+.poc-fetch-error__card {
+    width: min(620px, calc(100% - 20px));
+    display: grid;
+    gap: 10px;
+    padding: 18px 18px 16px;
+    border-radius: 16px;
+    border: 1px solid #cbd5e1;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 18px 34px rgba(15, 23, 42, 0.14);
+    color: #0f172a;
+}
+
+.poc-fetch-error__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #b91c1c;
+    background: linear-gradient(180deg, #fee2e2, #fecaca);
+    border: 1px solid #fca5a5;
+}
+
+.poc-fetch-error__kicker {
+    margin: 2px 0 0;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.poc-fetch-error__title {
+    margin: 0;
+    font-size: clamp(18px, 2.2vw, 24px);
+    line-height: 1.2;
+    color: #0f172a;
+}
+
+.poc-fetch-error__desc,
+.poc-fetch-error__help {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #334155;
+}
+
+.poc-fetch-error__meta {
+    display: grid;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px dashed #cbd5e1;
+    background: #f8fafc;
+}
+
+.poc-fetch-error__meta-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.poc-fetch-error__meta-value {
+    font-family: "ui-monospace", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+    color: #0f172a;
+    word-break: break-word;
+}
+
+.poc-fetch-error__details {
+    border: 1px solid #dbe3ed;
+    border-radius: 10px;
+    padding: 8px 10px;
+    background: #f8fafc;
+}
+
+.poc-fetch-error__details summary {
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+    color: #475569;
+}
+
+.poc-fetch-error__details pre {
+    margin: 8px 0 0;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #dbe3ed;
+    background: #ffffff;
+    color: #334155;
+    font-size: 11px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.poc-fetch-error__retry {
+    justify-self: start;
+    border: 1px solid #334155;
+    background: linear-gradient(180deg, #334155, #1e293b);
+    color: #ffffff;
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.poc-fetch-error__retry:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(30, 41, 59, 0.3);
+}
+
+.poc-fetch-error__retry:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
+}
+
+.poc-offline-side-note {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px dashed #cbd5e1;
+    background: #f8fafc;
+}
+
+.poc-offline-side-note h4 {
+    margin: 0;
+    font-size: 13px;
+    color: #1e293b;
+}
+
+.poc-offline-side-note p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #475569;
+}
+
 @media (max-width: 860px) {
     .poc-main-content {
         flex-direction: column;
         height: auto;
+    }
+
+    .poc-fetch-error__card {
+        width: min(100%, 620px);
     }
 
     .poc-detail-panel {

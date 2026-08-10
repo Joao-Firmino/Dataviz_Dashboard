@@ -99,4 +99,5 @@ async function loadDashboardData() {
 
 export { buildTimelineRequest };
 export { fetchJson };
+export { getApiBase };
 export default loadDashboardData;
