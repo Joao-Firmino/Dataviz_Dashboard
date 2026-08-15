@@ -52,10 +52,17 @@ input {
     width: min(1480px, calc(100% - 16px));
 }
 
-.app-lang-toggle {
+.app-controls {
     position: absolute;
     top: 2px;
     right: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.app-phase-toggle,
+.app-lang-toggle {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -65,6 +72,7 @@ input {
     border: 1px solid rgba(203, 213, 225, 0.35);
 }
 
+.app-phase-toggle__btn,
 .app-lang-toggle__btn {
     border: 1px solid transparent;
     border-radius: 999px;
@@ -80,6 +88,7 @@ input {
     transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
+.app-phase-toggle__btn.is-active,
 .app-lang-toggle__btn.is-active {
     background: #f8fafc;
     color: #0f172a;
@@ -342,6 +351,10 @@ input {
     pointer-events: none;
 }
 
+.poc-yorder-panel.is-static {
+    pointer-events: auto;
+}
+
 .poc-yorder-active-section {
     position: relative;
     pointer-events: auto;
@@ -383,6 +396,12 @@ input {
 
 .poc-yorder-card:active {
     cursor: grabbing;
+}
+
+.poc-yorder-card.is-static {
+    cursor: default;
+    pointer-events: none;
+    box-shadow: none;
 }
 
 .poc-yorder-card.is-dragging {
@@ -837,6 +856,147 @@ input {
     color: var(--text-main);
     font-weight: 700;
 }
+
+.poc-insight-nav {
+    justify-content: space-between;
+}
+
+.poc-insight-nav__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    border: 1px solid #aa8e74;
+    background: #fffaf1;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+}
+
+.poc-insight-nav__btn:hover:not(:disabled) {
+    background: var(--panel-strong);
+    border-color: var(--panel-strong);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.poc-insight-nav__btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.poc-insight-nav__counter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 78px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #e6f0ff 0%, #dfeafe 100%);
+    border: 1px solid #adc7ff;
+    color: #0f2b5b;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+    white-space: nowrap;
+}
+
+.poc-insight-card {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 12px;
+    background: #fffaf3;
+    border: 1px solid #ddceb9;
+}
+
+.poc-insight-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.poc-insight-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: #f5eadb;
+    border: 1px solid #d5bea2;
+    color: #76573d;
+}
+
+.poc-insight-tag--risk {
+    background: #fde8e8;
+    border-color: #e5b1b1;
+    color: #8f3636;
+}
+
+.poc-insight-tag--attention {
+    background: #fff4db;
+    border-color: #eacb8f;
+    color: #885b1a;
+}
+
+.poc-insight-tag--good {
+    background: #e8f5ea;
+    border-color: #a8d5b0;
+    color: #2f6f3b;
+}
+
+.poc-insight-card__id {
+    font-size: 10px;
+    font-weight: 900;
+    color: #7a6049;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.poc-insight-card__title {
+    margin: 0;
+    color: var(--text-main);
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.poc-insight-card__description {
+    margin: 0;
+    color: var(--text-soft);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.poc-insight-card__stat {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #ecdfcb;
+}
+
+.poc-insight-card__stat-value {
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--panel-strong);
+}
+
+.poc-insight-card__stat-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #8b7562;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
 
 .poc-detail-empty__lead svg,
 .poc-route-status svg,

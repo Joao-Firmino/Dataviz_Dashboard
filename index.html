@@ -6,15 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dataviz Dashboard - Student Journey</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="./styles/main.css?v=20260810130000">
+    <link rel="stylesheet" href="./styles/main.css?v=20260814090000">
 </head>
 <body>
     <header class="app-header">
         <div class="app-header__brand">
             <h1 id="app-main-title" class="app-header__title" data-i18n="appTitle">Dataviz Dashboard - Student Journey</h1>
-            <div class="app-lang-toggle" role="group" aria-label="Language selector">
-                <button id="lang-pt" class="app-lang-toggle__btn is-active" type="button" data-lang="pt">PT</button>
-                <button id="lang-en" class="app-lang-toggle__btn" type="button" data-lang="en">EN</button>
+            <div class="app-controls">
+                <div class="app-phase-toggle" role="group" aria-label="Phase selector">
+                    <button id="phase-1" class="app-phase-toggle__btn is-active" type="button" data-phase="phase1">Fase 1</button>
+                    <button id="phase-2" class="app-phase-toggle__btn" type="button" data-phase="phase2">Fase 2</button>
+                </div>
+                <div class="app-lang-toggle" role="group" aria-label="Language selector">
+                    <button id="lang-pt" class="app-lang-toggle__btn is-active" type="button" data-lang="pt">PT</button>
+                    <button id="lang-en" class="app-lang-toggle__btn" type="button" data-lang="en">EN</button>
+                </div>
             </div>
         </div>
     </header>
@@ -22,11 +28,6 @@
     <main class="app-main">
         <section class="poc-shell" aria-label="Painel principal do dashboard independente">
             <div class="poc-header">
-                <div class="poc-header__copy">
-                    <p id="poc-kicker" class="poc-kicker" data-i18n="kicker">Interactive analysis</p>
-                    <h2 id="poc-title" data-i18n="chartPrompt">How do students move through the activity?</h2>
-                </div>
-
                 <div class="poc-actions">
                     <label class="poc-control">
                         <span id="poc-activity-label" data-i18n="activity">Activity</span>
@@ -43,6 +44,10 @@
                         <button id="btn-drop" class="poc-filter-btn" type="button" data-i18n="unfinishedRoutes">Unfinished trajectories</button>
                     </div>
                 </div>
+
+                <div class="poc-header__copy">
+                    <h2 id="poc-title" data-i18n="chartPrompt">How do students move through the activity?</h2>
+                </div>
             </div>
 
             <div class="poc-main-content">
@@ -51,12 +56,7 @@
                 </div>
 
                 <aside id="poc-detail-panel" class="poc-detail-panel" aria-label="Insights menu">
-                    <div class="poc-panel-header">
-                        <h3 id="poc-panel-title">
-                            <span class="poc-panel-title-marker" aria-hidden="true">!</span>
-                            <span id="poc-panel-title-text" data-i18n="panelTitle">Activity insights</span>
-                        </h3>
-                    </div>
+                    <div id="poc-panel-header" class="poc-panel-header poc-insight-nav"></div>
                     <div id="poc-panel-content" class="poc-panel-content">
                         <p id="poc-panel-loading" style="color: #999;" data-i18n="panelLoading">Loading insights...</p>
                     </div>
@@ -67,6 +67,6 @@
 
     <script src="./js/vendor/d3.v6.min.js"></script>
     <script src="./js/vendor/lodash.js"></script>
-    <script src="./js/main.js?v=20260810141500" type="module"></script>
+    <script src="./js/main.js?v=20260814090000" type="module"></script>
 </body>
 </html>

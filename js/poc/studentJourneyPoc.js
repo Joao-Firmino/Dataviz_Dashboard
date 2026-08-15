@@ -1,8 +1,8 @@
 import loadDashboardData, { buildTimelineRequest, fetchJson } from "./loadDashboardData.js";
-import { t, tr } from "./i18n.js?v=20260810134500";
+import { t, tr } from "./i18n.js?v=20260814090000";
 import { DashboardTheme } from "./colors.js";
 import { renderStoryMenuPanel } from "./storyMenuPanel.js";
-import { formatStoryParameterValue, getStoryAffectedCount, getStoryAffectedPercentage } from "./storyMetrics.js";
+import { getStoryAffectedCount, getStoryAffectedPercentage } from "./storyMetrics.js";
 
 const EVENT_ORDER = [
     "resource_vis",
@@ -115,80 +115,9 @@ function ensureNarrativeTooltip(chartContainer) {
 }
 
 function showNarrativeTooltip(tooltip, pointer, story, containerNode, lang, options = {}) {
-    if (!tooltip || !story) return;
-
-    const { pinned = false } = options;
-    const containerWidth = containerNode?.clientWidth || 0;
-    const containerHeight = containerNode?.clientHeight || 0;
-    const hoverTooltipWidth = 340;
-    const pinnedTooltipWidth = 320;
-    const pinnedTooltipHeight = 180;
-    const safeMargin = 20;
-    const minPadding = 8;
-
-    const hoverX = (pointer?.[0] ?? 0) + 15;
-    const hoverY = (pointer?.[1] ?? 0) + 15;
-
-    let left = hoverX;
-    let top = hoverY;
-
-    if (pinned) {
-        const targetX = containerWidth - pinnedTooltipWidth - safeMargin;
-        const targetY = containerHeight - pinnedTooltipHeight - safeMargin;
-
-        left = containerWidth > 0
-            ? Math.max(minPadding, Math.min(targetX, containerWidth - minPadding))
-            : Math.max(minPadding, targetX);
-        top = containerHeight > 0
-            ? Math.max(minPadding, Math.min(targetY, containerHeight - minPadding))
-            : Math.max(minPadding, targetY);
-    } else {
-        left = containerWidth > 0
-            ? Math.max(minPadding, Math.min(hoverX, containerWidth - hoverTooltipWidth - minPadding))
-            : hoverX;
-        top = containerHeight > 0
-            ? Math.max(minPadding, Math.min(hoverY, containerHeight - pinnedTooltipHeight - minPadding))
-            : hoverY;
-    }
-
-    const tone = STORY_HIGHLIGHT_TONES[story.highlight] || STORY_HIGHLIGHT_TONES.attention;
-    const affectedCount = getStoryAffectedCount(story);
-    const affectedPct = getStoryAffectedPercentage(story, affectedCount);
-    const affectedPctLabel = Number.isFinite(affectedPct) ? `${affectedPct.toFixed(1)}%` : "--";
-    const parameterEntries = Object.entries(story?.parameters || {});
-    const parametersMarkup = parameterEntries.length
-        ? `
-            <div style="display:grid; gap:5px; margin-top:2px;">
-                <div style="font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:${DashboardTheme.system.textSoft};">${escapeHtml(t(lang, "paramsLabel"))}</div>
-                ${parameterEntries
-                    .map(([key, value]) => `
-                        <div style="display:grid; grid-template-columns:max-content minmax(0,1fr); gap:6px; align-items:start; font-size:11px;">
-                            <span style="font-weight:800; color:${DashboardTheme.system.textEmphasis};">${escapeHtml(key)}</span>
-                            <span style="color:${DashboardTheme.system.textStrong};">${escapeHtml(formatStoryParameterValue(value))}</span>
-                        </div>
-                    `)
-                    .join("")}
-            </div>
-        `
-        : "";
-
-    tooltip
-        .style("display", "block")
-        .style("left", `${left}px`)
-        .style("top", `${top}px`)
-        .style("transition", pinned ? "left 260ms ease, top 260ms ease, opacity 180ms ease" : "none")
-        .html(`
-            <div style="display:grid; gap:6px;">
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:999px; background:${tone.soft}; border:1px solid ${tone.accent}33; color:${tone.accent}; font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase;">${escapeHtml(t(lang, tone.labelKey))}</span>
-                    <span style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; border-radius:999px; background:${DashboardTheme.system.bgSurface}; border:1px solid ${DashboardTheme.system.borderMuted}; color:${DashboardTheme.system.textStrong}; font-size:10px; font-weight:900;">${escapeHtml(story.id)}</span>
-                </div>
-                <div style="font-weight:900;">${escapeHtml(tr(lang, story.title))}</div>
-                <div>${escapeHtml(tr(lang, story.question))}</div>
-                <div style="padding:6px 8px; border-radius:8px; background:${DashboardTheme.system.bgSurface}; border:1px solid ${DashboardTheme.system.borderSoft}; color:${DashboardTheme.system.textStrong};">${escapeHtml(t(lang, "studentsLabel"))}: <strong>${escapeHtml(String(affectedCount))}</strong> (${escapeHtml(affectedPctLabel)})</div>
-                ${parametersMarkup}
-            </div>
-        `);
+    // Tooltip flutuante desativado: os detalhes do insight ativo ficam apenas no card lateral.
+    if (!tooltip) return;
+    tooltip.style("display", "none");
 }
 
 function hideNarrativeTooltip(tooltip) {
@@ -657,16 +586,76 @@ function setTimelineLoadingOverlay(chartContainer, lang, isLoading) {
     card.append("span").text(t(lang, "recalculatingStories"));
 }
 
-function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, disabledEvents, y, margin, innerHeight, lang, onChange, isRecalculating }) {
+function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, disabledEvents, y, margin, innerHeight, lang, onChange, isRecalculating, isCustomizationEnabled }) {
     chartContainer.selectAll(".poc-yorder-panel, .poc-yorder-disabled-zone--bottom").remove();
 
     const panel = chartContainer
         .append("div")
-        .attr("class", "poc-yorder-panel")
+        .attr("class", `poc-yorder-panel${!isCustomizationEnabled ? " is-static" : ""}`)
         .style("left", "10px")
         .style("top", `${margin.top}px`)
         .style("width", `${Math.max(136, margin.left - 26)}px`)
         .style("height", `${innerHeight}px`);
+
+    if (!isCustomizationEnabled) {
+        const staticList = panel
+            .append("div")
+            .attr("class", "poc-yorder-active-section")
+            .style("height", `${innerHeight}px`)
+            .append("ul")
+            .attr("class", "poc-yorder-list")
+            .attr("data-zone", "active");
+
+        eventsOrder.forEach((eventName) => {
+            const yPos = y(eventName);
+            if (yPos == null) return;
+
+            const item = staticList
+                .append("li")
+                .attr("class", "poc-yorder-item")
+                .style("top", `${yPos}px`);
+
+            const card = item
+                .append("div")
+                .attr("class", "poc-yorder-card is-static")
+                .attr("data-event", eventName)
+                .attr("data-zone", "active")
+                .attr("aria-label", getEventLabel(eventName, lang));
+
+            const iconInfo = getEventIcon(eventName);
+            const iconColor = EVENT_COLOR[eventName] || DashboardTheme.system.textSoft;
+
+            card
+                .append("span")
+                .style("display", "inline-flex")
+                .style("align-items", "center")
+                .style("justify-content", "center")
+                .style("width", "22px")
+                .style("height", "22px")
+                .style("border-radius", "999px")
+                .style("background", DashboardTheme.system.bgWhite)
+                .style("border", `2px solid ${iconColor}`)
+                .style("flex", "0 0 auto")
+                .html(iconInfo ? `<i class="fa-solid ${iconInfo.className}" style="color:${iconColor};font-size:12px;"></i>` : "");
+
+            card
+                .append("span")
+                .attr("class", "poc-yorder-label")
+                .text(getEventLabel(eventName, lang));
+        });
+
+        panel
+            .append("p")
+            .attr("class", "poc-yorder-heading")
+            .text(t(lang, "activeEventsTitle"));
+
+        return;
+    }
+
+    panel
+        .append("p")
+        .attr("class", "poc-yorder-heading")
+        .text(t(lang, "activeEventsTitle"));
 
     panel
         .append("p")
@@ -969,6 +958,7 @@ function renderTrajectoryChart({
     titleNode,
     detailPanel,
     detailPanelContainer,
+    panelHeader,
     btnAll,
     btnDrop,
     groupedRoutes,
@@ -1047,51 +1037,43 @@ function renderTrajectoryChart({
         });
     });
 
-    const storiesForSidebar = (stories || []).filter((story) => visibleStoryIds.has(String(story.id)));
+    // availableInsights: apenas os insights visíveis com os filtros/atividade atuais.
+    const availableInsights = (stories || [])
+        .filter((story) => visibleStoryIds.has(String(story.id)))
+        .slice()
+        .sort((a, b) => d3.descending(getStoryAffectedCount(a), getStoryAffectedCount(b)));
+
+    // Reseta a paginação sempre que o conjunto de insights disponíveis mudar (evita index out-of-bounds).
+    const availableInsightIds = availableInsights.map((story) => String(story.id)).join("|");
+    if (state.__lastInsightIds !== availableInsightIds) {
+        state.currentInsightIndex = 0;
+        state.__lastInsightIds = availableInsightIds;
+    }
+
+    if (
+        !Number.isInteger(state.currentInsightIndex)
+        || state.currentInsightIndex < 0
+        || state.currentInsightIndex >= availableInsights.length
+    ) {
+        state.currentInsightIndex = 0;
+    }
+
+    const activeInsight = availableInsights[state.currentInsightIndex] || null;
+
+    // O highlight do D3 é guiado automaticamente pelo insight paginado (sem clique na lista).
+    state.selectedStoryId = activeInsight ? String(activeInsight.id) : null;
+    state.selectedRouteKey = null;
+    state.selectedRouteIndex = null;
+    state.pinnedCoords = null;
+
     const selectedStoryRouteIndices = state.selectedStoryId
         ? new Set(storyIdToVisibleRouteIndices.get(String(state.selectedStoryId)) || [])
         : new Set();
 
-    if (state.selectedStoryId && !visibleStoryIds.has(String(state.selectedStoryId))) {
-        state.selectedStoryId = null;
-        state.selectedRouteKey = null;
-        state.selectedRouteIndex = null;
-        state.pinnedCoords = null;
-    }
-
-    if (state.selectedStoryId && !selectedStoryRouteIndices.size) {
-        state.selectedStoryId = null;
-        state.selectedRouteKey = null;
-        state.selectedRouteIndex = null;
-        state.pinnedCoords = null;
-    }
-
-    if (state.selectedRouteKey && routeKeyToIndex.has(state.selectedRouteKey)) {
-        state.selectedRouteIndex = routeKeyToIndex.get(state.selectedRouteKey);
-    }
-
-    if (state.selectedRouteKey && !allVisibleKeys.has(state.selectedRouteKey)) {
-        state.selectedRouteKey = null;
-        state.selectedRouteIndex = null;
-        state.pinnedCoords = null;
-    }
-
-    if (state.selectedRouteIndex == null && state.selectedRouteKey && routeKeyToIndex.has(state.selectedRouteKey)) {
-        state.selectedRouteIndex = routeKeyToIndex.get(state.selectedRouteKey);
-    }
-
-    if (state.selectedRouteIndex != null) {
-        const indexedRoute = routesForChart[state.selectedRouteIndex] || null;
-
-        if (!indexedRoute) {
-            state.selectedRouteIndex = null;
-            state.selectedRouteKey = null;
-            state.selectedStoryId = null;
-            state.pinnedCoords = null;
-        } else {
-            state.selectedRouteKey = indexedRoute.routeKey;
-        }
-    }
+    const activeInsightAffectedCount = activeInsight ? getStoryAffectedCount(activeInsight) : 0;
+    const activeInsightAffectedPct = activeInsight
+        ? getStoryAffectedPercentage({ ...activeInsight, __totalStudentsInScope: totalStudentsInScope }, activeInsightAffectedCount)
+        : null;
 
     // Regras ajustadas no painel lateral ficam temporariamente inativas.
     // Para reativar, troque a linha abaixo para:
@@ -1099,65 +1081,43 @@ function renderTrajectoryChart({
     const storyFilterInfoForPanel = null;
 
     renderStoryMenuPanel({
+        panelHeaderSelection: panelHeader,
         detailPanelSelection: detailPanel,
-        stories: storiesForSidebar,
         storyFilterInfo: storyFilterInfoForPanel,
-        selectedStoryId: state.selectedStoryId,
+        availableInsights,
+        currentInsightIndex: state.currentInsightIndex,
+        activeInsight,
+        affectedCount: activeInsightAffectedCount,
+        affectedPct: activeInsightAffectedPct,
         lang,
         t,
         tr,
         getEventLabel,
-        getStoryAffectedCount,
         enableFilterSummary: false,
-        onStorySelect: (storyId) => {
-        const normalizedStoryId = String(storyId);
-        const matchingRouteIndices = storyIdToVisibleRouteIndices.get(normalizedStoryId) || [];
+        onNavigate: (direction) => {
+            const nextIndex = state.currentInsightIndex + direction;
+            if (nextIndex < 0 || nextIndex >= availableInsights.length) {
+                return;
+            }
 
-        if (!matchingRouteIndices.length) {
-            state.selectedStoryId = null;
-            state.selectedRouteKey = null;
-            state.selectedRouteIndex = null;
-            state.pinnedCoords = null;
+            state.currentInsightIndex = nextIndex;
             onStateChange();
-            return;
         }
-
-        if (state.selectedStoryId === normalizedStoryId) {
-            state.selectedStoryId = null;
-            state.selectedRouteKey = null;
-            state.selectedRouteIndex = null;
-            state.pinnedCoords = null;
-            onStateChange();
-            return;
-        }
-
-        const firstMatchIndex = matchingRouteIndices[0];
-        const firstMatchRoute = routesForChart[firstMatchIndex] || null;
-
-        state.selectedStoryId = normalizedStoryId;
-        state.selectedRouteIndex = firstMatchRoute ? firstMatchIndex : null;
-        state.selectedRouteKey = firstMatchRoute ? firstMatchRoute.routeKey : null;
-        state.pinnedCoords = null;
-
-        onStateChange();
-    }
     });
     detailPanelContainer.style("display", "block");
 
     const totalRoutes = routesToRender.length;
-    const modeLabel = state.narrativeMode === "unfinished"
-        ? t(lang, "modeUnfinished")
-        : t(lang, "modeFinished");
 
     titleNode.text(
-        totalRoutes > 0
-            ? `${modeLabel} ${t(lang, "inWord")} ${activityName} (${totalRoutes} ${t(lang, "routesCountSuffix")})`
-            : `${t(lang, "noRoutesMode")} ${activityName}.`
+        activeInsight
+            ? `${Number.isFinite(activeInsightAffectedPct) ? `${Math.round(activeInsightAffectedPct)}% ` : ""}${tr(lang, activeInsight.title || t(lang, "storyTitleFallback"))}`
+            : `${t(lang, "overviewFallbackTitle")} ${t(lang, "inWord")} ${activityName}`
     );
     btnAll.classed("is-active", state.narrativeMode === "finished");
     btnDrop.classed("is-active", state.narrativeMode === "unfinished");
 
     const isEmptyState = totalRoutes === 0;
+    const isCustomizationEnabled = state.phase === "phase2";
 
     const width = chartContainer.node().clientWidth || 1100;
     const availableHeight = detailPanelContainer.node().clientHeight || chartContainer.node().clientHeight || 420;
@@ -1165,7 +1125,8 @@ function renderTrajectoryChart({
     const margin = { top: 16, right: 20, bottom: 112, left: 190 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
-    const maxSteps = isEmptyState ? 6 : (d3.max(groupedRoutes, (d) => d.route.length) || 1);
+    const maxRenderedSteps = isEmptyState ? 6 : (d3.max(routesForChart, (d) => d.route.length) || 1);
+    const maxSteps = Math.max(1, maxRenderedSteps);
     const allSteps = d3.range(1, maxSteps + 1);
     const stepStride = isEmptyState ? 1 : Math.max(1, Math.ceil(allSteps.length / 12));
     const xTicks = isEmptyState ? d3.range(1, 7) : allSteps.filter((step, index) => index % stepStride === 0 || step === maxSteps);
@@ -1227,6 +1188,7 @@ function renderTrajectoryChart({
         innerHeight,
         lang,
         isRecalculating: state.isRecalculating,
+        isCustomizationEnabled,
         onChange: onEventsOrderChange
     });
 
@@ -1528,6 +1490,10 @@ function renderTrajectoryChart({
                 }
             })
             .on("click", (event) => {
+                if (!state.phase || state.phase !== "phase2") {
+                    return;
+                }
+
                 event.stopPropagation();
                 isPinningInProgress = true;
 
@@ -1569,6 +1535,10 @@ function renderTrajectoryChart({
                 }
             })
             .on("keydown", (event) => {
+                if (state.phase !== "phase2") {
+                    return;
+                }
+
                 if (event.key !== "Enter" && event.key !== " ") {
                     return;
                 }
@@ -1684,12 +1654,15 @@ async function renderStudentJourneyPoC() {
     const minVolumeValue = d3.select("#poc-min-volume-value");
     const minVolumeLabel = d3.select("#poc-volume-label");
     const titleNode = d3.select("#poc-title");
+    const panelHeader = d3.select("#poc-panel-header");
     const detailPanel = d3.select("#poc-panel-content");
     const detailPanelContainer = d3.select("#poc-detail-panel");
     const btnAll = d3.select("#btn-all");
     const btnDrop = d3.select("#btn-drop");
     const langPtBtn = d3.select("#lang-pt");
     const langEnBtn = d3.select("#lang-en");
+    const phase1Btn = d3.select("#phase-1");
+    const phase2Btn = d3.select("#phase-2");
 
     if (
         chartContainer.empty() ||
@@ -1698,12 +1671,15 @@ async function renderStudentJourneyPoC() {
         minVolumeValue.empty() ||
         minVolumeLabel.empty() ||
         titleNode.empty() ||
+        panelHeader.empty() ||
         detailPanel.empty() ||
         detailPanelContainer.empty() ||
         btnAll.empty() ||
         btnDrop.empty() ||
         langPtBtn.empty() ||
-        langEnBtn.empty()
+        langEnBtn.empty() ||
+        phase1Btn.empty() ||
+        phase2Btn.empty()
     ) {
         console.error("POC elements not found");
         return;
@@ -1730,6 +1706,7 @@ async function renderStudentJourneyPoC() {
             minVolume: 10,
             narrativeMode: "finished",
             lang: "pt",
+            phase: "phase1",
             isRecalculating: false,
             eventsOrder: DEFAULT_EVENTS_ORDER.slice(),
             disabledEvents: [],
@@ -1737,6 +1714,7 @@ async function renderStudentJourneyPoC() {
             selectedStoryId: null,
             selectedRouteIndex: null,
             pinnedCoords: null,
+            currentInsightIndex: 0,
         };
 
         let currentGroupedRoutes = [];
@@ -1795,6 +1773,7 @@ async function renderStudentJourneyPoC() {
                 state.selectedStoryId = null;
                 state.selectedRouteIndex = null;
                 state.pinnedCoords = null;
+                state.currentInsightIndex = 0;
             } catch (error) {
                 console.error("Falha ao recalcular timeline com nova ordem:", error);
             } finally {
@@ -1805,6 +1784,8 @@ async function renderStudentJourneyPoC() {
 
         function refreshView() {
             applyUiTranslations(state);
+            phase1Btn.classed("is-active", state.phase === "phase1");
+            phase2Btn.classed("is-active", state.phase === "phase2");
 
             const activityData = getGroupedRoutesForCurrentActivity();
             currentGroupedRoutes = activityData.groupedRoutes;
@@ -1834,6 +1815,7 @@ async function renderStudentJourneyPoC() {
                 titleNode,
                 detailPanel,
                 detailPanelContainer,
+                panelHeader,
                 btnAll,
                 btnDrop,
                 groupedRoutes: currentGroupedRoutes,
@@ -1871,6 +1853,7 @@ async function renderStudentJourneyPoC() {
             state.selectedStoryId = null;
             state.selectedRouteIndex = null;
             state.pinnedCoords = null;
+            state.currentInsightIndex = 0;
 
             if (hasCustomizedEventConfiguration(state)) {
                 recalculateTimelineForEventConfig({
@@ -1885,6 +1868,7 @@ async function renderStudentJourneyPoC() {
 
         minVolumeSlider.on("input", function () {
             state.minVolume = Number(this.value) || 10;
+            state.currentInsightIndex = 0;
             refreshView();
         });
 
@@ -1894,6 +1878,7 @@ async function renderStudentJourneyPoC() {
             state.selectedStoryId = null;
             state.selectedRouteIndex = null;
             state.pinnedCoords = null;
+            state.currentInsightIndex = 0;
             refreshView();
         });
 
@@ -1903,6 +1888,7 @@ async function renderStudentJourneyPoC() {
             state.selectedStoryId = null;
             state.selectedRouteIndex = null;
             state.pinnedCoords = null;
+            state.currentInsightIndex = 0;
             refreshView();
         });
 
@@ -1915,6 +1901,28 @@ async function renderStudentJourneyPoC() {
         langEnBtn.on("click", () => {
             if (state.lang === "en") return;
             state.lang = "en";
+            refreshView();
+        });
+
+        phase1Btn.on("click", () => {
+            if (state.phase === "phase1") return;
+            state.phase = "phase1";
+            state.selectedRouteKey = null;
+            state.selectedStoryId = null;
+            state.selectedRouteIndex = null;
+            state.pinnedCoords = null;
+            state.currentInsightIndex = 0;
+            refreshView();
+        });
+
+        phase2Btn.on("click", () => {
+            if (state.phase === "phase2") return;
+            state.phase = "phase2";
+            state.selectedRouteKey = null;
+            state.selectedStoryId = null;
+            state.selectedRouteIndex = null;
+            state.pinnedCoords = null;
+            state.currentInsightIndex = 0;
             refreshView();
         });
 

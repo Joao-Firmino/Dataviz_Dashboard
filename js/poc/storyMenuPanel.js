@@ -29,26 +29,11 @@ function getStoryCategoryMeta(category, lang, tr, t) {
     };
 }
 
-function groupStories(stories) {
-    const grouped = stories.reduce((acc, story) => {
-        const category = story.category || "other";
-        (acc[category] ??= []).push(story);
-        return acc;
-    }, {});
-
-    const categoryOrder = ["deadline", "prep", "bottleneck", "social", "rhythm", "profile"];
-
-    return Object.entries(grouped)
-        .map(([category, items]) => ({ category, items: items.slice().sort((a, b) => d3.descending(a.affected_count, b.affected_count)) }))
-        .sort((a, b) => {
-            const aIndex = categoryOrder.indexOf(a.category);
-            const bIndex = categoryOrder.indexOf(b.category);
-            if (aIndex === -1 && bIndex === -1) return d3.ascending(a.category, b.category);
-            if (aIndex === -1) return 1;
-            if (bIndex === -1) return -1;
-            return d3.ascending(aIndex, bIndex);
-        });
-}
+const STORY_HIGHLIGHT_RAW_LABELS = {
+    risk: "Risco Alto",
+    attention: "Atenção",
+    good: "Positiva"
+};
 
 function summarizeStoryFilterRules(storyFilterInfo) {
     const rules = Array.isArray(storyFilterInfo?.rules) ? storyFilterInfo.rules : [];
@@ -163,27 +148,55 @@ function attachStoryFilterToggleHandlers(detailPanelSelection, lang, t) {
 
 function renderStoryMenuPanel(options) {
     const {
+        panelHeaderSelection,
         detailPanelSelection,
-        stories,
         storyFilterInfo,
-        selectedStoryId,
-        onStorySelect,
+        availableInsights,
+        currentInsightIndex,
+        activeInsight,
+        affectedCount,
+        affectedPct,
         lang,
         t,
         tr,
         getEventLabel,
-        getStoryAffectedCount,
-        enableFilterSummary
+        enableFilterSummary,
+        onNavigate
     } = options;
 
-    const grouped = groupStories(stories || []);
+    const total = availableInsights?.length || 0;
+    const hasInsights = total > 0 && Boolean(activeInsight);
+
+    panelHeaderSelection.html(`
+        <button
+            type="button"
+            id="poc-insight-prev"
+            class="poc-insight-nav__btn"
+            aria-label="${escapeHtml(t(lang, "insightPrevAria"))}"
+            ${!hasInsights || currentInsightIndex <= 0 ? "disabled" : ""}>
+            <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+        </button>
+        <span class="poc-insight-nav__counter">${hasInsights ? `${currentInsightIndex + 1} ${t(lang, "ofRoutes")} ${total}` : "0"}</span>
+        <button
+            type="button"
+            id="poc-insight-next"
+            class="poc-insight-nav__btn"
+            aria-label="${escapeHtml(t(lang, "insightNextAria"))}"
+            ${!hasInsights || currentInsightIndex >= total - 1 ? "disabled" : ""}>
+            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+        </button>
+    `);
+
+    panelHeaderSelection.select("#poc-insight-prev").on("click", () => onNavigate(-1));
+    panelHeaderSelection.select("#poc-insight-next").on("click", () => onNavigate(1));
+
     const filterInfoMarkup = buildStoryFilterInfoMarkup(storyFilterInfo, lang, {
         t,
         getEventLabel,
         enableFilterSummary,
     });
 
-    if (!grouped.length) {
+    if (!hasInsights) {
         detailPanelSelection.html(`
             <div class="poc-story-nav">
                 ${filterInfoMarkup}
@@ -194,67 +207,34 @@ function renderStoryMenuPanel(options) {
         return;
     }
 
-    const html = `
+    const categoryMeta = getStoryCategoryMeta(activeInsight.category, lang, tr, t);
+    const highlight = activeInsight.highlight || "attention";
+    const highlightLabel = t(lang, STORY_HIGHLIGHT_RAW_LABELS[highlight] || STORY_HIGHLIGHT_RAW_LABELS.attention);
+    const pctSuffix = Number.isFinite(affectedPct) ? ` (${Math.round(affectedPct)}%)` : "";
+
+    detailPanelSelection.html(`
         <div class="poc-story-nav">
             ${filterInfoMarkup}
-            <div class="poc-story-list-scroll">
-                ${grouped
-            .map(({ category, items }) => {
-                const categoryMeta = getStoryCategoryMeta(category, lang, tr, t);
-                return `
-                            <section class="poc-story-group" data-category="${escapeHtml(category)}">
-                                <div class="poc-story-group__title">
-                                    <span>${escapeHtml(categoryMeta.label)}</span>
-                                    <span class="poc-story-group__count">${items.length}</span>
-                                </div>
-                                <div class="poc-story-list">
-                                    ${items.map((story) => {
-                        const isActive = selectedStoryId && String(story.id) === String(selectedStoryId);
-                        const affectedCount = getStoryAffectedCount(story);
-                        return `
-                                            <button
-                                                type="button"
-                                                class="poc-story-item ${isActive ? "is-active" : ""}"
-                                                data-story-id="${escapeHtml(String(story.id))}"
-                                                title="${escapeHtml(tr(lang, story.title || t(lang, "storyTitleFallback")))}">
-                                                <div class="poc-story-item__meta">
-                                                    <span class="poc-story-item__id">${escapeHtml(String(story.id || "S"))}</span>
-                                                    <span class="poc-story-item__badge">${escapeHtml(String(affectedCount))}</span>
-                                                </div>
-                                                <div class="poc-story-item__title">${escapeHtml(tr(lang, story.title || t(lang, "untitledStory")))}</div>
-                                            </button>
-                                        `;
-                    }).join("")}
-                                </div>
-                            </section>
-                        `;
-            })
-            .join("")}
+            <div class="poc-insight-card">
+                <div class="poc-insight-card__tags">
+                    <span class="poc-insight-tag poc-insight-tag--category">
+                        <i class="fa-solid fa-${escapeHtml(categoryMeta.icon)}" aria-hidden="true"></i>
+                        ${escapeHtml(categoryMeta.label)}
+                    </span>
+                    <span class="poc-insight-tag poc-insight-tag--${escapeHtml(highlight)}">${escapeHtml(highlightLabel)}</span>
+                </div>
+                <div class="poc-insight-card__id">${escapeHtml(String(activeInsight.id || "S"))}</div>
+                <h4 class="poc-insight-card__title">${escapeHtml(tr(lang, activeInsight.title || t(lang, "storyTitleFallback")))}</h4>
+                <p class="poc-insight-card__description">${escapeHtml(tr(lang, activeInsight.question || ""))}</p>
+                <div class="poc-insight-card__stat">
+                    <span class="poc-insight-card__stat-value">${escapeHtml(String(affectedCount))}${escapeHtml(pctSuffix)}</span>
+                    <span class="poc-insight-card__stat-label">${escapeHtml(t(lang, "insightStudentsImpacted"))}</span>
+                </div>
             </div>
         </div>
-    `;
+    `);
 
-    detailPanelSelection.html(html);
-    detailPanelSelection.selectAll(".poc-story-item").on("click", function (event) {
-        event.preventDefault();
-        const storyId = this.getAttribute("data-story-id");
-        if (storyId) {
-            onStorySelect(storyId);
-        }
-    });
     attachStoryFilterToggleHandlers(detailPanelSelection, lang, t);
-
-    if (selectedStoryId) {
-        const activeCard = detailPanelSelection
-            .selectAll(".poc-story-item")
-            .filter(function () {
-                return this.getAttribute("data-story-id") === String(selectedStoryId);
-            })
-            .node();
-        if (activeCard && typeof activeCard.scrollIntoView === "function") {
-            activeCard.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-        }
-    }
 }
 
 export { renderStoryMenuPanel };
