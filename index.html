@@ -25,6 +25,16 @@
         </div>
     </header>
 
+    <script>
+        (() => {
+            const host = window.location && window.location.hostname ? window.location.hostname : "";
+            const isLocal = host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.");
+            window.DATAVIZ_API_URL = isLocal
+                ? "http://localhost:8000"
+                : "https://ws-mestrado.onrender.com";
+        })();
+    </script>
+
     <main class="app-main">
         <section class="poc-shell" aria-label="Painel principal do dashboard independente">
             <div class="poc-header">

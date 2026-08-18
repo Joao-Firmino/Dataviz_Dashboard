@@ -22,14 +22,27 @@ const DEFAULT_EVENTS_ORDER = [
     "resource_vis"
 ];
 
-const DEFAULT_API_BASE = "http://localhost:8000";
+const LOCAL_API_BASE = "http://localhost:8000";
+const RENDER_API_BASE = "https://ws-mestrado.onrender.com";
 
 function getConfiguredApiBase() {
     if (typeof window !== "undefined" && window.DATAVIZ_API_URL) {
         return window.DATAVIZ_API_URL;
     }
 
-    return DEFAULT_API_BASE;
+    if (typeof window !== "undefined") {
+        const hostname = window.location?.hostname || "";
+
+        if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.")) {
+            return LOCAL_API_BASE;
+        }
+
+        if (hostname.includes("render") || hostname.includes("onrender")) {
+            return RENDER_API_BASE;
+        }
+    }
+
+    return LOCAL_API_BASE;
 }
 
 function getEventLabel(eventName, lang) {

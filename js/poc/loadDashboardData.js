@@ -1,4 +1,5 @@
-const DEFAULT_API_BASE = "http://localhost:8000";
+const LOCAL_API_BASE = "http://localhost:8000";
+const RENDER_API_BASE = "https://ws-mestrado.onrender.com";
 
 const DEFAULT_TIMELINE_REQUEST = {
     scenario: 7,
@@ -22,7 +23,19 @@ function getApiBase() {
         return window.DATAVIZ_API_URL;
     }
 
-    return DEFAULT_API_BASE;
+    if (typeof window !== "undefined") {
+        const hostname = window.location?.hostname || "";
+
+        if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.")) {
+            return LOCAL_API_BASE;
+        }
+
+        if (hostname.includes("render") || hostname.includes("onrender")) {
+            return RENDER_API_BASE;
+        }
+    }
+
+    return LOCAL_API_BASE;
 }
 
 async function fetchJson(path, init = {}) {
