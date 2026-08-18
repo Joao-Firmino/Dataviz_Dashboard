@@ -131,21 +131,22 @@ function showNarrativeTooltip(tooltip, pointer, story, containerNode, lang, opti
     if (!tooltip || tooltip.empty()) return;
 
     const isRouteTooltip = Boolean(story && story.__routeTooltip);
+    const isPinned = Boolean(options.fixed || options.pinned);
 
     if (isRouteTooltip) {
         const studentTotal = Number(story.totalStudents) || 0;
         const totalInScope = Number(story.__totalStudentsInScope) || 1;
         const percent = Math.min(100, Math.max(0, (studentTotal / totalInScope) * 100));
-        const label = lang === "en" ? "students followed this route" : "alunos percorreram esta rota";
+        const routeLabel = story.routeLabel || (lang === "en" ? "Route" : "Rota");
 
         tooltip
             .style("display", "block")
-            .style("left", `${Math.max(12, pointer[0] + 18)}px`)
-            .style("top", `${Math.max(12, pointer[1] - 6)}px`)
+            .style("left", isPinned ? "auto" : `${Math.max(12, pointer[0] + 18)}px`)
+            .style("top", isPinned ? "auto" : `${Math.max(12, pointer[1] - 6)}px`)
+            .style("right", isPinned ? "18px" : "auto")
+            .style("bottom", isPinned ? "18px" : "auto")
             .html(`
                 <div style="display:flex;flex-direction:column;gap:6px;">
-                    <div style="font-weight:700; color:#0f172a;">${escapeHtml(story.routeLabel || "Route")}</div>
-                    <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:#64748b;">${escapeHtml(label)}</div>
                     <div style="font-size:18px; font-weight:800; color:#0f172a;">${Math.round(percent)}%</div>
                     <div style="font-size:11px; color:#475569;">${studentTotal} / ${totalInScope} ${t(lang, "studentsWord")}</div>
                 </div>
@@ -1311,7 +1312,6 @@ function renderTrajectoryChart({
         ? (STORY_HIGHLIGHT_STROKES[selectedStory.highlight] || DashboardTheme.system.selectionFallback)
         : DashboardTheme.system.selectionFallback;
     let hoveredRouteKey = null;
-    let isPinningInProgress = false;
 
     function hasPinnedStory() {
         return Boolean(state.selectedStoryId && state.selectedRouteIndex != null);
@@ -1322,7 +1322,7 @@ function renderTrajectoryChart({
     }
 
     function isTooltipLocked() {
-        return hasPinnedStory() || hasPinnedSelection() || isPinningInProgress;
+        return false;
     }
 
     function isStoryRouteHighlighted(routeIndex) {
@@ -1533,7 +1533,7 @@ function renderTrajectoryChart({
                             d3.pointer(event, chartContainer.node()),
                             {
                                 __routeTooltip: true,
-                                routeLabel: `${t(lang, "routeWord")} ${routeData.routeKey || ""}`.trim(),
+                                routeLabel: routeData.routeKey || (lang === "en" ? "Route" : "Rota"),
                                 totalStudents: routeData.totalStudents,
                                 __totalStudentsInScope: totalStudentsInScope
                             },
@@ -1556,7 +1556,7 @@ function renderTrajectoryChart({
                         d3.pointer(event, chartContainer.node()),
                         {
                             __routeTooltip: true,
-                            routeLabel: `${t(lang, "routeWord")} ${routeData.routeKey || ""}`.trim(),
+                            routeLabel: routeData.routeKey || (lang === "en" ? "Route" : "Rota"),
                             totalStudents: routeData.totalStudents,
                             __totalStudentsInScope: totalStudentsInScope
                         },
@@ -1585,7 +1585,6 @@ function renderTrajectoryChart({
                 }
 
                 event.stopPropagation();
-                isPinningInProgress = true;
 
                 const [xCoord, yCoord] = d3.pointer(event, chartContainer.node());
 
@@ -1594,10 +1593,25 @@ function renderTrajectoryChart({
                 state.selectedRouteIndex = alreadySelected ? null : routeIndex;
                 state.selectedStoryId = state.phase === "phase2" && !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
                 state.pinnedCoords = !alreadySelected ? { x: xCoord, y: yCoord } : null;
+                hoveredRouteKey = routeData.routeKey;
+                applyRouteVisualState();
+                showNarrativeTooltip(
+                    narrativeTooltip,
+                    !alreadySelected ? [xCoord, yCoord] : [xCoord, yCoord],
+                    {
+                        __routeTooltip: true,
+                        routeLabel: routeData.routeKey || (lang === "en" ? "Route" : "Rota"),
+                        totalStudents: routeData.totalStudents,
+                        __totalStudentsInScope: totalStudentsInScope
+                    },
+                    chartContainer.node(),
+                    lang,
+                    { fixed: true }
+                );
                 onStateChange();
             })
             .on("focus", () => {
-                if (isPinningInProgress || hoveredRouteKey) {
+                if (hoveredRouteKey) {
                     return;
                 }
 
@@ -1612,7 +1626,7 @@ function renderTrajectoryChart({
                             : [storyMarkerPosition.x, storyMarkerPosition.y],
                         {
                             __routeTooltip: true,
-                            routeLabel: `${t(lang, "routeWord")} ${routeData.routeKey || ""}`.trim(),
+                            routeLabel: routeData.routeKey || (lang === "en" ? "Route" : "Rota"),
                             totalStudents: routeData.totalStudents,
                             __totalStudentsInScope: totalStudentsInScope
                         },
@@ -1651,7 +1665,6 @@ function renderTrajectoryChart({
 
                 event.preventDefault();
                 event.stopPropagation();
-                isPinningInProgress = true;
 
                 const alreadySelected = state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
                 state.selectedRouteKey = alreadySelected ? null : routeData.routeKey;
@@ -1660,6 +1673,21 @@ function renderTrajectoryChart({
                 state.pinnedCoords = !alreadySelected
                     ? { x: storyMarkerPosition.x, y: storyMarkerPosition.y }
                     : null;
+                hoveredRouteKey = routeData.routeKey;
+                applyRouteVisualState();
+                showNarrativeTooltip(
+                    narrativeTooltip,
+                    !alreadySelected ? [storyMarkerPosition.x, storyMarkerPosition.y] : [storyMarkerPosition.x, storyMarkerPosition.y],
+                    {
+                        __routeTooltip: true,
+                        routeLabel: routeData.routeKey || (lang === "en" ? "Route" : "Rota"),
+                        totalStudents: routeData.totalStudents,
+                        __totalStudentsInScope: totalStudentsInScope
+                    },
+                    chartContainer.node(),
+                    lang,
+                    { fixed: true }
+                );
                 onStateChange();
             });
 
@@ -1718,7 +1746,24 @@ function renderTrajectoryChart({
 
     applyRouteVisualState();
 
-    if (selectedStoryForPinned && selectedStoryPointer) {
+    if (state.phase === "phase0" && state.selectedRouteIndex != null && routesForChart[state.selectedRouteIndex]) {
+        const selectedRouteTooltipData = routesForChart[state.selectedRouteIndex];
+        const selectedRoutePointer = state.pinnedCoords || [Math.max(100, width * 0.5), 60];
+
+        showNarrativeTooltip(
+            narrativeTooltip,
+            selectedRoutePointer,
+            {
+                __routeTooltip: true,
+                routeLabel: selectedRouteTooltipData.routeKey || (lang === "en" ? "Route" : "Rota"),
+                totalStudents: selectedRouteTooltipData.totalStudents,
+                __totalStudentsInScope: totalStudentsInScope
+            },
+            chartContainer.node(),
+            lang,
+            { fixed: true }
+        );
+    } else if (selectedStoryForPinned && selectedStoryPointer) {
         showNarrativeTooltip(narrativeTooltip, selectedStoryPointer, selectedStoryForPinned, chartContainer.node(), lang, { pinned: true });
     } else {
         hideNarrativeTooltip(narrativeTooltip);
