@@ -1,5 +1,5 @@
 import loadDashboardData, { buildTimelineRequest, fetchJson } from "./loadDashboardData.js";
-import { t, tr } from "./i18n.js?v=20260814090000";
+import { t, tr } from "./i18n.js?v=20260818000100";
 import { DashboardTheme } from "./colors.js";
 import { renderStoryMenuPanel } from "./storyMenuPanel.js";
 import { getStoryAffectedCount, getStoryAffectedPercentage } from "./storyMetrics.js";
@@ -128,8 +128,31 @@ function ensureNarrativeTooltip(chartContainer) {
 }
 
 function showNarrativeTooltip(tooltip, pointer, story, containerNode, lang, options = {}) {
-    // Tooltip flutuante desativado: os detalhes do insight ativo ficam apenas no card lateral.
-    if (!tooltip) return;
+    if (!tooltip || tooltip.empty()) return;
+
+    const isRouteTooltip = Boolean(story && story.__routeTooltip);
+
+    if (isRouteTooltip) {
+        const studentTotal = Number(story.totalStudents) || 0;
+        const totalInScope = Number(story.__totalStudentsInScope) || 1;
+        const percent = Math.min(100, Math.max(0, (studentTotal / totalInScope) * 100));
+        const label = lang === "en" ? "students followed this route" : "alunos percorreram esta rota";
+
+        tooltip
+            .style("display", "block")
+            .style("left", `${Math.max(12, pointer[0] + 18)}px`)
+            .style("top", `${Math.max(12, pointer[1] - 6)}px`)
+            .html(`
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div style="font-weight:700; color:#0f172a;">${escapeHtml(story.routeLabel || "Route")}</div>
+                    <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:#64748b;">${escapeHtml(label)}</div>
+                    <div style="font-size:18px; font-weight:800; color:#0f172a;">${Math.round(percent)}%</div>
+                    <div style="font-size:11px; color:#475569;">${studentTotal} / ${totalInScope} ${t(lang, "studentsWord")}</div>
+                </div>
+            `);
+        return;
+    }
+
     tooltip.style("display", "none");
 }
 
@@ -1072,12 +1095,28 @@ function renderTrajectoryChart({
     }
 
     const activeInsight = availableInsights[state.currentInsightIndex] || null;
+    const isStoryMode = state.phase !== "phase0";
 
-    // O highlight do D3 é guiado automaticamente pelo insight paginado (sem clique na lista).
-    state.selectedStoryId = activeInsight ? String(activeInsight.id) : null;
-    state.selectedRouteKey = null;
-    state.selectedRouteIndex = null;
-    state.pinnedCoords = null;
+    if (state.phase === "phase0") {
+        state.selectedStoryId = null;
+        state.pinnedCoords = null;
+
+        if (state.selectedRouteIndex != null) {
+            const selectedRoute = routesForChart[state.selectedRouteIndex];
+            if (!selectedRoute || selectedRoute.routeKey !== state.selectedRouteKey) {
+                state.selectedRouteKey = null;
+                state.selectedRouteIndex = null;
+            }
+        } else {
+            state.selectedRouteKey = null;
+        }
+    } else {
+        // O highlight do D3 é guiado automaticamente pelo insight paginado (sem clique na lista).
+        state.selectedStoryId = activeInsight ? String(activeInsight.id) : null;
+        state.selectedRouteKey = null;
+        state.selectedRouteIndex = null;
+        state.pinnedCoords = null;
+    }
 
     const selectedStoryRouteIndices = state.selectedStoryId
         ? new Set(storyIdToVisibleRouteIndices.get(String(state.selectedStoryId)) || [])
@@ -1093,38 +1132,46 @@ function renderTrajectoryChart({
     // const storyFilterInfoForPanel = storyFilterInfo;
     const storyFilterInfoForPanel = null;
 
-    renderStoryMenuPanel({
-        panelHeaderSelection: panelHeader,
-        detailPanelSelection: detailPanel,
-        storyFilterInfo: storyFilterInfoForPanel,
-        availableInsights,
-        currentInsightIndex: state.currentInsightIndex,
-        activeInsight,
-        affectedCount: activeInsightAffectedCount,
-        affectedPct: activeInsightAffectedPct,
-        lang,
-        t,
-        tr,
-        getEventLabel,
-        enableFilterSummary: false,
-        onNavigate: (direction) => {
-            const nextIndex = state.currentInsightIndex + direction;
-            if (nextIndex < 0 || nextIndex >= availableInsights.length) {
-                return;
-            }
+    if (isStoryMode) {
+        renderStoryMenuPanel({
+            panelHeaderSelection: panelHeader,
+            detailPanelSelection: detailPanel,
+            storyFilterInfo: storyFilterInfoForPanel,
+            availableInsights,
+            currentInsightIndex: state.currentInsightIndex,
+            activeInsight,
+            affectedCount: activeInsightAffectedCount,
+            affectedPct: activeInsightAffectedPct,
+            lang,
+            t,
+            tr,
+            getEventLabel,
+            enableFilterSummary: false,
+            onNavigate: (direction) => {
+                const nextIndex = state.currentInsightIndex + direction;
+                if (nextIndex < 0 || nextIndex >= availableInsights.length) {
+                    return;
+                }
 
-            state.currentInsightIndex = nextIndex;
-            onStateChange();
-        }
-    });
-    detailPanelContainer.style("display", "block");
+                state.currentInsightIndex = nextIndex;
+                onStateChange();
+            }
+        });
+        detailPanelContainer.style("display", "block");
+    } else {
+        panelHeader.selectAll("*").remove();
+        detailPanel.selectAll("*").remove();
+        detailPanelContainer.style("display", "none");
+    }
 
     const totalRoutes = routesToRender.length;
 
     titleNode.text(
-        activeInsight
-            ? `${Number.isFinite(activeInsightAffectedPct) ? `${Math.round(activeInsightAffectedPct)}% ` : ""}${tr(lang, activeInsight.title || t(lang, "storyTitleFallback"))}`
-            : `${t(lang, "overviewFallbackTitle")} ${t(lang, "inWord")} ${activityName}`
+        state.phase === "phase0"
+            ? `${t(lang, "overviewFallbackTitle")} ${t(lang, "inWord")} ${activityName}`
+            : activeInsight
+                ? `${Number.isFinite(activeInsightAffectedPct) ? `${Math.round(activeInsightAffectedPct)}% ` : ""}${tr(lang, activeInsight.title || t(lang, "storyTitleFallback"))}`
+                : `${t(lang, "overviewFallbackTitle")} ${t(lang, "inWord")} ${activityName}`
     );
     btnAll.classed("is-active", state.narrativeMode === "finished");
     btnDrop.classed("is-active", state.narrativeMode === "unfinished");
@@ -1225,10 +1272,12 @@ function renderTrajectoryChart({
         .call((axis) => axis.select(".domain").remove())
         .call((axis) => axis.selectAll("line").attr("stroke", DashboardTheme.system.axisGrid).attr("stroke-dasharray", "3 5"));
 
+    const stepLabel = t(lang, "stepLabel");
+
     root
         .append("g")
         .attr("transform", `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(x).tickValues(xTicks).tickFormat((step) => `${step}`))
+        .call(d3.axisBottom(x).tickValues(xTicks).tickFormat((step) => `${stepLabel} ${step}`))
         .call((axis) => axis.selectAll("text").attr("fill", DashboardTheme.system.textSoft).style("font-size", "12px"))
         .call((axis) => axis.select(".domain").attr("stroke", DashboardTheme.system.borderStrong));
 
@@ -1477,8 +1526,23 @@ function renderTrajectoryChart({
                 hoveredRouteKey = routeData.routeKey;
                 applyRouteVisualState();
 
-                if (!isTooltipLocked() && storyHighlight && activeStoryWithMetrics) {
-                    showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node(), lang);
+                if (!isTooltipLocked()) {
+                    if (state.phase === "phase0") {
+                        showNarrativeTooltip(
+                            narrativeTooltip,
+                            d3.pointer(event, chartContainer.node()),
+                            {
+                                __routeTooltip: true,
+                                routeLabel: `${t(lang, "routeWord")} ${routeData.routeKey || ""}`.trim(),
+                                totalStudents: routeData.totalStudents,
+                                __totalStudentsInScope: totalStudentsInScope
+                            },
+                            chartContainer.node(),
+                            lang
+                        );
+                    } else if (storyHighlight && activeStoryWithMetrics) {
+                        showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node(), lang);
+                    }
                 }
             })
             .on("mousemove", (event) => {
@@ -1486,7 +1550,20 @@ function renderTrajectoryChart({
                     return;
                 }
 
-                if (!hasPinnedStory() && storyHighlight && activeStoryWithMetrics) {
+                if (state.phase === "phase0") {
+                    showNarrativeTooltip(
+                        narrativeTooltip,
+                        d3.pointer(event, chartContainer.node()),
+                        {
+                            __routeTooltip: true,
+                            routeLabel: `${t(lang, "routeWord")} ${routeData.routeKey || ""}`.trim(),
+                            totalStudents: routeData.totalStudents,
+                            __totalStudentsInScope: totalStudentsInScope
+                        },
+                        chartContainer.node(),
+                        lang
+                    );
+                } else if (!hasPinnedStory() && storyHighlight && activeStoryWithMetrics) {
                     showNarrativeTooltip(narrativeTooltip, d3.pointer(event, chartContainer.node()), activeStoryWithMetrics, chartContainer.node(), lang);
                 }
             })
@@ -1503,7 +1580,7 @@ function renderTrajectoryChart({
                 }
             })
             .on("click", (event) => {
-                if (!state.phase || state.phase !== "phase2") {
+                if (!state.phase || (state.phase !== "phase0" && state.phase !== "phase2")) {
                     return;
                 }
 
@@ -1515,7 +1592,7 @@ function renderTrajectoryChart({
                 const alreadySelected = state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
                 state.selectedRouteKey = alreadySelected ? null : routeData.routeKey;
                 state.selectedRouteIndex = alreadySelected ? null : routeIndex;
-                state.selectedStoryId = !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
+                state.selectedStoryId = state.phase === "phase2" && !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
                 state.pinnedCoords = !alreadySelected ? { x: xCoord, y: yCoord } : null;
                 onStateChange();
             })
@@ -1527,7 +1604,23 @@ function renderTrajectoryChart({
                 hoveredRouteKey = routeData.routeKey;
                 applyRouteVisualState();
 
-                if ((hasPinnedStory() && isHighlighted(routeData, routeIndex)) || (!hasPinnedStory() && activeStoryWithMetrics)) {
+                if (state.phase === "phase0") {
+                    showNarrativeTooltip(
+                        narrativeTooltip,
+                        hasPinnedStory() && state.pinnedCoords
+                            ? [state.pinnedCoords.x, state.pinnedCoords.y]
+                            : [storyMarkerPosition.x, storyMarkerPosition.y],
+                        {
+                            __routeTooltip: true,
+                            routeLabel: `${t(lang, "routeWord")} ${routeData.routeKey || ""}`.trim(),
+                            totalStudents: routeData.totalStudents,
+                            __totalStudentsInScope: totalStudentsInScope
+                        },
+                        chartContainer.node(),
+                        lang,
+                        { pinned: hasPinnedStory() }
+                    );
+                } else if ((hasPinnedStory() && isHighlighted(routeData, routeIndex)) || (!hasPinnedStory() && activeStoryWithMetrics)) {
                     showNarrativeTooltip(
                         narrativeTooltip,
                         hasPinnedStory() && state.pinnedCoords
@@ -1548,7 +1641,7 @@ function renderTrajectoryChart({
                 }
             })
             .on("keydown", (event) => {
-                if (state.phase !== "phase2") {
+                if (state.phase !== "phase0" && state.phase !== "phase2") {
                     return;
                 }
 
@@ -1563,7 +1656,7 @@ function renderTrajectoryChart({
                 const alreadySelected = state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
                 state.selectedRouteKey = alreadySelected ? null : routeData.routeKey;
                 state.selectedRouteIndex = alreadySelected ? null : routeIndex;
-                state.selectedStoryId = !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
+                state.selectedStoryId = state.phase === "phase2" && !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
                 state.pinnedCoords = !alreadySelected
                     ? { x: storyMarkerPosition.x, y: storyMarkerPosition.y }
                     : null;
@@ -1674,6 +1767,7 @@ async function renderStudentJourneyPoC() {
     const btnDrop = d3.select("#btn-drop");
     const langPtBtn = d3.select("#lang-pt");
     const langEnBtn = d3.select("#lang-en");
+    const phase0Btn = d3.select("#phase-0");
     const phase1Btn = d3.select("#phase-1");
     const phase2Btn = d3.select("#phase-2");
 
@@ -1691,6 +1785,7 @@ async function renderStudentJourneyPoC() {
         btnDrop.empty() ||
         langPtBtn.empty() ||
         langEnBtn.empty() ||
+        phase0Btn.empty() ||
         phase1Btn.empty() ||
         phase2Btn.empty()
     ) {
@@ -1719,7 +1814,7 @@ async function renderStudentJourneyPoC() {
             minVolume: 10,
             narrativeMode: "finished",
             lang: "pt",
-            phase: "phase1",
+            phase: "phase0",
             isRecalculating: false,
             eventsOrder: DEFAULT_EVENTS_ORDER.slice(),
             disabledEvents: [],
@@ -1797,6 +1892,7 @@ async function renderStudentJourneyPoC() {
 
         function refreshView() {
             applyUiTranslations(state);
+            phase0Btn.classed("is-active", state.phase === "phase0");
             phase1Btn.classed("is-active", state.phase === "phase1");
             phase2Btn.classed("is-active", state.phase === "phase2");
 
@@ -1854,7 +1950,7 @@ async function renderStudentJourneyPoC() {
                 refreshedMinVolumeValue.text(state.minVolume);
             }
 
-            detailPanelContainer.style("display", "block");
+            detailPanelContainer.style("display", state.phase === "phase0" ? "none" : "block");
             activitySelect.property("value", String(state.activityIndex));
         }
 
@@ -1914,6 +2010,17 @@ async function renderStudentJourneyPoC() {
         langEnBtn.on("click", () => {
             if (state.lang === "en") return;
             state.lang = "en";
+            refreshView();
+        });
+
+        phase0Btn.on("click", () => {
+            if (state.phase === "phase0") return;
+            state.phase = "phase0";
+            state.selectedRouteKey = null;
+            state.selectedStoryId = null;
+            state.selectedRouteIndex = null;
+            state.pinnedCoords = null;
+            state.currentInsightIndex = 0;
             refreshView();
         });
 
