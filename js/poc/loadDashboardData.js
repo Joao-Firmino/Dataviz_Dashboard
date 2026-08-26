@@ -3,6 +3,8 @@ const RENDER_API_BASE = "https://ws-mestrado.onrender.com";
 
 const DEFAULT_TIMELINE_REQUEST = {
     scenario: 7,
+    coalescing_repeating: true,
+    coalesce_repeating: true,
     thresholds: {
         low_grade: 0.5,
         high_grade: 0.75,
@@ -71,6 +73,8 @@ function buildTimelineRequest(assignmentId, overrides = {}) {
         stories_respect_event_filter: overrides.stories_respect_event_filter ?? false,
         segment: overrides.segment ?? null,
         scenario: scenarioOverride,
+        coalescing_repeating: overrides.coalescing_repeating ?? DEFAULT_TIMELINE_REQUEST.coalescing_repeating,
+        coalesce_repeating: overrides.coalesce_repeating ?? DEFAULT_TIMELINE_REQUEST.coalesce_repeating,
         thresholds: {
             ...DEFAULT_TIMELINE_REQUEST.thresholds,
             ...(overrides.thresholds || {})
