@@ -628,7 +628,7 @@ function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, disabledEven
 
     const panel = chartContainer
         .append("div")
-        .attr("class", `poc-yorder-panel${!isCustomizationEnabled ? " is-static" : ""}`)
+        .attr("class", `poc-yorder-panel${!isCustomizationEnabled ? " is-static is-borderless" : ""}`)
         .style("left", "10px")
         .style("top", `${margin.top}px`)
         .style("width", `${Math.max(136, margin.left - 26)}px`)
@@ -1096,9 +1096,9 @@ function renderTrajectoryChart({
     }
 
     const activeInsight = availableInsights[state.currentInsightIndex] || null;
-    const isStoryMode = state.phase !== "phase0";
+    const isStoryMode = state.step !== "step1";
 
-    if (state.phase === "phase0") {
+    if (state.step === "step1") {
         state.selectedStoryId = null;
         state.pinnedCoords = null;
 
@@ -1168,17 +1168,17 @@ function renderTrajectoryChart({
     const totalRoutes = routesToRender.length;
 
     titleNode.text(
-        state.phase === "phase0"
+        state.step === "step1"
             ? `${t(lang, "overviewFallbackTitle")} ${t(lang, "inWord")} ${activityName}`
             : activeInsight
-                ? `${Number.isFinite(activeInsightAffectedPct) ? `${Math.round(activeInsightAffectedPct)}% ` : ""}${tr(lang, activeInsight.title || t(lang, "storyTitleFallback"))}`
+            ? `${tr(lang, activeInsight.title || t(lang, "storyTitleFallback"))}${Number.isFinite(activeInsightAffectedPct) ? ` (${Math.round(activeInsightAffectedPct)}% ${t(lang, "storyPctSuffix")})` : ""}`
                 : `${t(lang, "overviewFallbackTitle")} ${t(lang, "inWord")} ${activityName}`
     );
     btnAll.classed("is-active", state.narrativeMode === "finished");
     btnDrop.classed("is-active", state.narrativeMode === "unfinished");
 
     const isEmptyState = totalRoutes === 0;
-    const isCustomizationEnabled = state.phase === "phase2";
+    const isCustomizationEnabled = state.step === "step3";
 
     const width = chartContainer.node().clientWidth || 1100;
     const availableHeight = detailPanelContainer.node().clientHeight || chartContainer.node().clientHeight || 420;
@@ -1527,7 +1527,7 @@ function renderTrajectoryChart({
                 applyRouteVisualState();
 
                 if (!isTooltipLocked()) {
-                    if (state.phase === "phase0") {
+                    if (state.step === "step1") {
                         showNarrativeTooltip(
                             narrativeTooltip,
                             d3.pointer(event, chartContainer.node()),
@@ -1550,7 +1550,7 @@ function renderTrajectoryChart({
                     return;
                 }
 
-                if (state.phase === "phase0") {
+                if (state.step === "step1") {
                     showNarrativeTooltip(
                         narrativeTooltip,
                         d3.pointer(event, chartContainer.node()),
@@ -1580,7 +1580,7 @@ function renderTrajectoryChart({
                 }
             })
             .on("click", (event) => {
-                if (!state.phase || (state.phase !== "phase0" && state.phase !== "phase2")) {
+                if (!state.step || (state.step !== "step1" && state.step !== "step3")) {
                     return;
                 }
 
@@ -1591,7 +1591,7 @@ function renderTrajectoryChart({
                 const alreadySelected = state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
                 state.selectedRouteKey = alreadySelected ? null : routeData.routeKey;
                 state.selectedRouteIndex = alreadySelected ? null : routeIndex;
-                state.selectedStoryId = state.phase === "phase2" && !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
+                state.selectedStoryId = state.step === "step3" && !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
                 state.pinnedCoords = !alreadySelected ? { x: xCoord, y: yCoord } : null;
                 hoveredRouteKey = routeData.routeKey;
                 applyRouteVisualState();
@@ -1618,7 +1618,7 @@ function renderTrajectoryChart({
                 hoveredRouteKey = routeData.routeKey;
                 applyRouteVisualState();
 
-                if (state.phase === "phase0") {
+                if (state.step === "step1") {
                     showNarrativeTooltip(
                         narrativeTooltip,
                         hasPinnedStory() && state.pinnedCoords
@@ -1655,7 +1655,7 @@ function renderTrajectoryChart({
                 }
             })
             .on("keydown", (event) => {
-                if (state.phase !== "phase0" && state.phase !== "phase2") {
+                if (state.step !== "step1" && state.step !== "step3") {
                     return;
                 }
 
@@ -1669,7 +1669,7 @@ function renderTrajectoryChart({
                 const alreadySelected = state.selectedRouteIndex != null && routeIndex === state.selectedRouteIndex;
                 state.selectedRouteKey = alreadySelected ? null : routeData.routeKey;
                 state.selectedRouteIndex = alreadySelected ? null : routeIndex;
-                state.selectedStoryId = state.phase === "phase2" && !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
+                state.selectedStoryId = state.step === "step3" && !alreadySelected && activeStoryWithMetrics ? String(activeStoryWithMetrics.id) : null;
                 state.pinnedCoords = !alreadySelected
                     ? { x: storyMarkerPosition.x, y: storyMarkerPosition.y }
                     : null;
@@ -1746,7 +1746,7 @@ function renderTrajectoryChart({
 
     applyRouteVisualState();
 
-    if (state.phase === "phase0" && state.selectedRouteIndex != null && routesForChart[state.selectedRouteIndex]) {
+    if (state.step === "step1" && state.selectedRouteIndex != null && routesForChart[state.selectedRouteIndex]) {
         const selectedRouteTooltipData = routesForChart[state.selectedRouteIndex];
         const selectedRoutePointer = state.pinnedCoords || [Math.max(100, width * 0.5), 60];
 
@@ -1804,6 +1804,7 @@ async function renderStudentJourneyPoC() {
     const minVolumeSlider = d3.select("#poc-min-volume");
     const minVolumeValue = d3.select("#poc-min-volume-value");
     const minVolumeLabel = d3.select("#poc-volume-label");
+    const minVolumeFilter = d3.select(".poc-volume-filter");
     const titleNode = d3.select("#poc-title");
     const panelHeader = d3.select("#poc-panel-header");
     const detailPanel = d3.select("#poc-panel-content");
@@ -1812,9 +1813,9 @@ async function renderStudentJourneyPoC() {
     const btnDrop = d3.select("#btn-drop");
     const langPtBtn = d3.select("#lang-pt");
     const langEnBtn = d3.select("#lang-en");
-    const phase0Btn = d3.select("#phase-0");
-    const phase1Btn = d3.select("#phase-1");
-    const phase2Btn = d3.select("#phase-2");
+    const step1Btn = d3.select("#step-1");
+    const step2Btn = d3.select("#step-2");
+    const step3Btn = d3.select("#step-3");
 
     if (
         chartContainer.empty() ||
@@ -1822,6 +1823,7 @@ async function renderStudentJourneyPoC() {
         minVolumeSlider.empty() ||
         minVolumeValue.empty() ||
         minVolumeLabel.empty() ||
+        minVolumeFilter.empty() ||
         titleNode.empty() ||
         panelHeader.empty() ||
         detailPanel.empty() ||
@@ -1830,13 +1832,15 @@ async function renderStudentJourneyPoC() {
         btnDrop.empty() ||
         langPtBtn.empty() ||
         langEnBtn.empty() ||
-        phase0Btn.empty() ||
-        phase1Btn.empty() ||
-        phase2Btn.empty()
+        step1Btn.empty() ||
+        step2Btn.empty() ||
+        step3Btn.empty()
     ) {
         console.error("POC elements not found");
         return;
     }
+
+    applyUiTranslations({ lang: "pt" });
 
     try {
         const dataStore = await loadDashboardData();
@@ -1859,7 +1863,7 @@ async function renderStudentJourneyPoC() {
             minVolume: 10,
             narrativeMode: "finished",
             lang: "pt",
-            phase: "phase0",
+            step: "step1",
             isRecalculating: false,
             eventsOrder: DEFAULT_EVENTS_ORDER.slice(),
             disabledEvents: [],
@@ -1937,9 +1941,9 @@ async function renderStudentJourneyPoC() {
 
         function refreshView() {
             applyUiTranslations(state);
-            phase0Btn.classed("is-active", state.phase === "phase0");
-            phase1Btn.classed("is-active", state.phase === "phase1");
-            phase2Btn.classed("is-active", state.phase === "phase2");
+            step1Btn.classed("is-active", state.step === "step1");
+            step2Btn.classed("is-active", state.step === "step2");
+            step3Btn.classed("is-active", state.step === "step3");
 
             const activityData = getGroupedRoutesForCurrentActivity();
             currentGroupedRoutes = activityData.groupedRoutes;
@@ -1984,6 +1988,8 @@ async function renderStudentJourneyPoC() {
             setTimelineLoadingOverlay(chartContainer, state.lang, state.isRecalculating);
 
             const maxVolume = d3.max(currentGroupedRoutes, (routeData) => routeData.totalStudents) || 1;
+            minVolumeFilter.style("display", state.step === "step1" ? "none" : null);
+
             minVolumeSlider
                 .attr("max", Math.max(10, Math.min(50, maxVolume)))
                 .property("value", state.minVolume)
@@ -1995,7 +2001,7 @@ async function renderStudentJourneyPoC() {
                 refreshedMinVolumeValue.text(state.minVolume);
             }
 
-            detailPanelContainer.style("display", state.phase === "phase0" ? "none" : "block");
+            detailPanelContainer.style("display", state.step === "step1" ? "none" : "block");
             activitySelect.property("value", String(state.activityIndex));
         }
 
@@ -2058,9 +2064,9 @@ async function renderStudentJourneyPoC() {
             refreshView();
         });
 
-        phase0Btn.on("click", () => {
-            if (state.phase === "phase0") return;
-            state.phase = "phase0";
+        step1Btn.on("click", () => {
+            if (state.step === "step1") return;
+            state.step = "step1";
             state.selectedRouteKey = null;
             state.selectedStoryId = null;
             state.selectedRouteIndex = null;
@@ -2069,9 +2075,9 @@ async function renderStudentJourneyPoC() {
             refreshView();
         });
 
-        phase1Btn.on("click", () => {
-            if (state.phase === "phase1") return;
-            state.phase = "phase1";
+        step2Btn.on("click", () => {
+            if (state.step === "step2") return;
+            state.step = "step2";
             state.selectedRouteKey = null;
             state.selectedStoryId = null;
             state.selectedRouteIndex = null;
@@ -2080,9 +2086,9 @@ async function renderStudentJourneyPoC() {
             refreshView();
         });
 
-        phase2Btn.on("click", () => {
-            if (state.phase === "phase2") return;
-            state.phase = "phase2";
+        step3Btn.on("click", () => {
+            if (state.step === "step3") return;
+            state.step = "step3";
             state.selectedRouteKey = null;
             state.selectedStoryId = null;
             state.selectedRouteIndex = null;

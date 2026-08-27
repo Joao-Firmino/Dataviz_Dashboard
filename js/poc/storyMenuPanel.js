@@ -208,8 +208,6 @@ function renderStoryMenuPanel(options) {
     }
 
     const categoryMeta = getStoryCategoryMeta(activeInsight.category, lang, tr, t);
-    const highlight = activeInsight.highlight || "attention";
-    const highlightLabel = t(lang, STORY_HIGHLIGHT_RAW_LABELS[highlight] || STORY_HIGHLIGHT_RAW_LABELS.attention);
     const pctSuffix = Number.isFinite(affectedPct) ? ` (${Math.round(affectedPct)}%)` : "";
 
     detailPanelSelection.html(`
@@ -221,7 +219,6 @@ function renderStoryMenuPanel(options) {
                         <i class="fa-solid fa-${escapeHtml(categoryMeta.icon)}" aria-hidden="true"></i>
                         ${escapeHtml(categoryMeta.label)}
                     </span>
-                    <span class="poc-insight-tag poc-insight-tag--${escapeHtml(highlight)}">${escapeHtml(highlightLabel)}</span>
                 </div>
                 <div class="poc-insight-card__id">${escapeHtml(String(activeInsight.id || "S"))}</div>
                 <h4 class="poc-insight-card__title">${escapeHtml(tr(lang, activeInsight.title || t(lang, "storyTitleFallback")))}</h4>

@@ -61,7 +61,7 @@ input {
     gap: 8px;
 }
 
-.app-phase-toggle,
+.app-step-toggle,
 .app-lang-toggle {
     display: inline-flex;
     align-items: center;
@@ -72,7 +72,7 @@ input {
     border: 1px solid rgba(203, 213, 225, 0.35);
 }
 
-.app-phase-toggle__btn,
+.app-step-toggle__btn,
 .app-lang-toggle__btn {
     border: 1px solid transparent;
     border-radius: 999px;
@@ -88,7 +88,7 @@ input {
     transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
-.app-phase-toggle__btn.is-active,
+.app-step-toggle__btn.is-active,
 .app-lang-toggle__btn.is-active {
     background: #f8fafc;
     color: #0f172a;
@@ -402,6 +402,10 @@ input {
     cursor: default;
     pointer-events: none;
     box-shadow: none;
+}
+
+.poc-yorder-panel.is-borderless .poc-yorder-card {
+    border: none;
 }
 
 .poc-yorder-card.is-dragging {
