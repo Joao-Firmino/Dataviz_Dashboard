@@ -1,5 +1,5 @@
 import loadDashboardData, { buildTimelineRequest, fetchJson } from "./loadDashboardData.js";
-import { t, tr } from "./i18n.js?v=20260818000100";
+import { t, tr } from "./i18n.js?v=20260829000100";
 import { DashboardTheme } from "./colors.js";
 import { renderStoryMenuPanel } from "./storyMenuPanel.js";
 import { getStoryAffectedCount, getStoryAffectedPercentage } from "./storyMetrics.js";
@@ -21,6 +21,8 @@ const DEFAULT_EVENTS_ORDER = [
     "forum_vis",
     "resource_vis"
 ];
+
+const VISUAL_START_EVENT = "activity_posted";
 
 const LOCAL_API_BASE = "http://localhost:8000";
 const RENDER_API_BASE = "https://ws-mestrado.onrender.com";
@@ -161,9 +163,13 @@ function hideNarrativeTooltip(tooltip) {
     if (!tooltip || tooltip.empty()) return;
     tooltip.style("display", "none");
 }
-const EVENT_COLOR = DashboardTheme.events;
+const EVENT_COLOR = {
+    ...DashboardTheme.events,
+    [VISUAL_START_EVENT]: DashboardTheme.system.selectionFallback
+};
 
 const EVENT_FA_ICON = {
+    [VISUAL_START_EVENT]: { className: "fa-chalkboard-teacher", color: DashboardTheme.system.selectionFallback },
     resource_vis: { className: "fa-folder-open", color: DashboardTheme.events.resource_vis },
     forum_vis: { className: "fa-comments", color: DashboardTheme.events.forum_vis },
     forum_participation: { className: "fa-comment-medical", color: DashboardTheme.events.forum_participation },
@@ -624,6 +630,7 @@ function setTimelineLoadingOverlay(chartContainer, lang, isLoading) {
 }
 
 function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, disabledEvents, y, margin, innerHeight, lang, onChange, isRecalculating, isCustomizationEnabled }) {
+    const displayEvents = [...eventsOrder, VISUAL_START_EVENT];
     chartContainer.selectAll(".poc-yorder-panel, .poc-yorder-disabled-zone--bottom").remove();
 
     const panel = chartContainer
@@ -643,7 +650,7 @@ function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, disabledEven
             .attr("class", "poc-yorder-list")
             .attr("data-zone", "active");
 
-        eventsOrder.forEach((eventName) => {
+        displayEvents.forEach((eventName) => {
             const yPos = y(eventName);
             if (yPos == null) return;
 
@@ -892,19 +899,24 @@ function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, disabledEven
             });
     }
 
-    eventsOrder.forEach((eventName) => {
+    displayEvents.forEach((eventName) => {
         const yPos = y(eventName);
         if (yPos == null) return;
+        const isVisualStart = eventName === VISUAL_START_EVENT;
+        const dropRowHeight = Math.max(44, y.step ? y.step() : 44);
 
         const item = list
             .append("li")
             .attr("class", "poc-yorder-item")
-            .style("top", `${yPos}px`);
+            .style("top", `${yPos}px`)
+            .style("height", `${dropRowHeight}px`)
+            .style("display", "flex")
+            .style("align-items", "center");
 
         const card = item
             .append("div")
-            .attr("class", "poc-yorder-card")
-            .attr("draggable", isRecalculating ? "false" : "true")
+            .attr("class", `poc-yorder-card${isVisualStart ? " is-static" : ""}`)
+            .attr("draggable", isVisualStart || isRecalculating ? "false" : "true")
             .attr("data-event", eventName)
             .attr("data-zone", "active")
             .attr("aria-label", getEventLabel(eventName, lang));
@@ -930,7 +942,10 @@ function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, disabledEven
             .attr("class", "poc-yorder-label")
             .text(getEventLabel(eventName, lang));
 
-        attachDropTarget(card, "active", eventName, { relativePlacement: true });
+        if (!isVisualStart) {
+            attachDropTarget(card, "active", eventName, { relativePlacement: true });
+            attachDropTarget(item, "active", eventName, { relativePlacement: true });
+        }
     });
 
     disabledEvents.forEach((eventName) => {
@@ -966,7 +981,7 @@ function renderInteractiveYAxisPanel({ chartContainer, eventsOrder, disabledEven
         attachDropTarget(card, "disabled", eventName, { relativePlacement: true });
     });
 
-    chartContainer.selectAll(".poc-yorder-card")
+    chartContainer.selectAll(".poc-yorder-card:not(.is-static)")
         .on("dragstart", function (event) {
             draggingEvent = this.getAttribute("data-event");
             draggingFromZone = this.getAttribute("data-zone");
@@ -1168,11 +1183,9 @@ function renderTrajectoryChart({
     const totalRoutes = routesToRender.length;
 
     titleNode.text(
-        state.step === "step1"
-            ? `${t(lang, "overviewFallbackTitle")} ${t(lang, "inWord")} ${activityName}`
-            : activeInsight
+        activeInsight
             ? `${tr(lang, activeInsight.title || t(lang, "storyTitleFallback"))}${Number.isFinite(activeInsightAffectedPct) ? ` (${Math.round(activeInsightAffectedPct)}% ${t(lang, "storyPctSuffix")})` : ""}`
-                : `${t(lang, "overviewFallbackTitle")} ${t(lang, "inWord")} ${activityName}`
+            : `${t(lang, "overviewFallbackTitle")} ${t(lang, "inWord")} ${activityName}`
     );
     btnAll.classed("is-active", state.narrativeMode === "finished");
     btnDrop.classed("is-active", state.narrativeMode === "unfinished");
@@ -1186,12 +1199,12 @@ function renderTrajectoryChart({
     const margin = { top: 16, right: 20, bottom: 112, left: 190 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
-    const maxRenderedSteps = isEmptyState ? 6 : (d3.max(routesForChart, (d) => d.route.length) || 1);
+    const maxRenderedSteps = isEmptyState ? 6 : (d3.max(routesForChart, (d) => d.route.length + 1) || 1);
     const maxSteps = Math.max(1, maxRenderedSteps);
     const allSteps = d3.range(1, maxSteps + 1);
     const stepStride = isEmptyState ? 1 : Math.max(1, Math.ceil(allSteps.length / 12));
     const xTicks = isEmptyState ? d3.range(1, 7) : allSteps.filter((step, index) => index % stepStride === 0 || step === maxSteps);
-    const yDomain = activeEventsOrder.slice();
+    const yDomain = [...activeEventsOrder, VISUAL_START_EVENT];
     const denseMode = routesForChart.length > 120;
 
     const x = d3.scaleLinear().domain([1, maxSteps]).range([0, innerWidth]);
@@ -1488,8 +1501,8 @@ function renderTrajectoryChart({
 
     routeGroup.each(function (routeData, routeIndex) {
         const group = d3.select(this);
-        const points = routeData.route
-            .filter((eventName) => activeEventSet.has(eventName))
+        const points = [VISUAL_START_EVENT, ...routeData.route]
+            .filter((eventName) => eventName === VISUAL_START_EVENT || activeEventSet.has(eventName))
             .map((eventName, step) => ({ event: eventName, step }));
         if (!points.length) {
             return;
@@ -1859,7 +1872,7 @@ async function renderStudentJourneyPoC() {
             .text((d) => d.name);
 
         const state = {
-            activityIndex: 0,
+            activityIndex: Math.min(1, dataStore.quizList.length - 1),
             minVolume: 10,
             narrativeMode: "finished",
             lang: "pt",
@@ -1875,7 +1888,7 @@ async function renderStudentJourneyPoC() {
         };
 
         let currentGroupedRoutes = [];
-        let currentTimeline = dataStore.timelinesByQuizId[dataStore.quizList[0].id];
+        let currentTimeline = dataStore.timelinesByQuizId[dataStore.quizList[state.activityIndex].id];
 
         function getSelectedActivity() {
             const parsedIndex = Number(state.activityIndex);
